@@ -31,19 +31,19 @@ public class Level {
         Level, MPD, Secret;
     }
     private final LevelType type;
-    private final int level;
+    private final int levelNumber;
     private final String variation;
     private KwdFile kwdFile = null;
     private static final Logger logger = Logger.getLogger(Level.class.getName());
 
-    public Level(LevelType type, int level, String variation) {
+    public Level(LevelType type, int levelNumber, String variation) {
         this.type = type;
-        this.level = level;
+        this.levelNumber = levelNumber;
         this.variation = variation;
     }
 
-    public int getLevel() {
-        return level;
+    public int getLevelNumber() {
+        return levelNumber;
     }
 
     public LevelType getType() {
@@ -55,18 +55,18 @@ public class Level {
     }
 
     public String getFullName() {
-        return getType().toString() + (getLevel() > 0 ? getLevel() : "") + getVariation();
+        return getType().toString() + (getLevelNumber() > 0 ? getLevelNumber() : "") + getVariation();
     }
 
     public KwdFile getKwdFile() {
         if (kwdFile == null) {
             try {
 
-                // Load the actual level info
+                // Load the actual levelNumber info
                 kwdFile = new KwdFile(Main.getDkIIFolder(),
-                        new File(ConversionUtils.getRealFileName(Main.getDkIIFolder(), AssetsConverter.MAPS_FOLDER + String.format("%s%s%s", getType(), getLevel(), getVariation()) + ".kwd")), false);
+                        new File(ConversionUtils.getRealFileName(Main.getDkIIFolder(), AssetsConverter.MAPS_FOLDER + String.format("%s%s%s", getType(), getLevelNumber(), getVariation()) + ".kwd")), false);
             } catch (IOException ex) {
-                logger.log(java.util.logging.Level.SEVERE, "Failed to load the level file!", ex);
+                logger.log(java.util.logging.Level.SEVERE, "Failed to load the levelNumber file!", ex);
             }
         }
         return kwdFile;

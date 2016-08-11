@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 import toniarts.openkeeper.Main;
+import toniarts.openkeeper.utils.SettingUtils;
+
 import static toniarts.openkeeper.game.data.Level.LevelType.Level;
 import static toniarts.openkeeper.game.data.Level.LevelType.MPD;
 import static toniarts.openkeeper.game.data.Level.LevelType.Secret;
@@ -36,6 +38,8 @@ import static toniarts.openkeeper.game.data.Level.LevelType.Secret;
  * @author Toni Helenius <helenius.toni@gmail.com>
  */
 public class Settings {
+
+    private int levelNumber;
 
     public enum SettingCategory {
 
@@ -58,7 +62,7 @@ public class Settings {
     public enum Setting implements ISetting {
 
         // Campaign
-        LEVEL_NUMBER(Integer.class, 0, SettingCategory.CAMPAIGN),
+        LEVEL_NUMBER(Integer.class, 1, SettingCategory.CAMPAIGN),
         LEVEL_ATTEMPTS(Integer.class, 0, SettingCategory.CAMPAIGN),
         LEVEL_STATUS(LevelStatus.class, LevelStatus.NOT_COMPLETED, SettingCategory.CAMPAIGN),
         SECRET_LEVEL_STATUS(LevelStatus.class, SecretLevelStatus.NOT_DISCOVED, SettingCategory.CAMPAIGN),
@@ -266,6 +270,18 @@ public class Settings {
         return instance;
     }
 
+    public static Settings getInstance() {
+        if (instance == null) {
+            synchronized (Settings.class) {
+                if (instance == null) {
+                    instance = new Settings(SettingUtils.getSettings());
+                }
+            }
+        }
+        return instance;
+    }
+
+
     /**
      * Get the JME interface, should be used with care
      *
@@ -361,7 +377,7 @@ public class Settings {
      * @return number of attempts to a level
      */
     public int getLevelAttempts(Level level) {
-        return (int) getSetting(Setting.LEVEL_ATTEMPTS.toString() + level, Setting.LEVEL_ATTEMPTS.getDefaultValue());
+        return (int) getSetting(Setting.LEVEL_ATTEMPTS.toString() + getLevelNumber(level), Setting.LEVEL_ATTEMPTS.getDefaultValue());
     }
 
     /**
@@ -373,9 +389,9 @@ public class Settings {
     public LevelStatus getLevelStatus(Level level) {
         switch (level.getType()) {
             case Level:
-                return LevelStatus.valueOf((String) getSetting(Setting.LEVEL_STATUS.toString() + level, Setting.LEVEL_STATUS.getDefaultValue()));
+                return LevelStatus.valueOf((String) getSetting(Setting.LEVEL_STATUS.toString() + getLevelNumber(level), Setting.LEVEL_STATUS.getDefaultValue()));
             case MPD:
-                return LevelStatus.valueOf((String) getSetting(Setting.MPD_LEVEL_STATUS.toString() + level, Setting.MPD_LEVEL_STATUS.getDefaultValue()));
+                return LevelStatus.valueOf((String) getSetting(Setting.MPD_LEVEL_STATUS.toString() + getLevelNumber(level), Setting.MPD_LEVEL_STATUS.getDefaultValue()));
         }
         return null;
     }
@@ -389,7 +405,7 @@ public class Settings {
     public SecretLevelStatus getSecredLevelStatus(Level level) {
         switch (level.getType()) {
             case Secret:
-                return SecretLevelStatus.valueOf((String) getSetting(Setting.SECRET_LEVEL_STATUS.toString() + level, Setting.SECRET_LEVEL_STATUS.getDefaultValue()));
+                return SecretLevelStatus.valueOf((String) getSetting(Setting.SECRET_LEVEL_STATUS.toString() + getLevelNumber(level), Setting.SECRET_LEVEL_STATUS.getDefaultValue()));
         }
         return null;
     }
@@ -401,7 +417,16 @@ public class Settings {
      * @return number of attempts to a level
      */
     public void increaseLevelAttempts(Level level) {
-        setSetting(Setting.LEVEL_ATTEMPTS.toString() + level, getLevelAttempts(level) + 1);
+        setSetting(Setting.LEVEL_ATTEMPTS.toString() + getLevelNumber(level), getLevelAttempts(level) + 1);
+    }
+
+    /**
+     * Set level number
+     *
+     * @param levelNumber the level number
+     */
+    public void setLevelNumber(int levelNumber) {
+        setSetting(Setting.LEVEL_NUMBER.toString(), levelNumber);
     }
 
     /**
@@ -413,9 +438,9 @@ public class Settings {
     public void setLevelStatus(Level level, LevelStatus status) {
         switch (level.getType()) {
             case Level:
-                setSetting(Setting.LEVEL_STATUS.toString() + level, status);
+                setSetting(Setting.LEVEL_STATUS.toString() + getLevelNumber(level), status);
             case MPD:
-                setSetting(Setting.MPD_LEVEL_STATUS.toString() + level, status);
+                setSetting(Setting.MPD_LEVEL_STATUS.toString() + getLevelNumber(level), status);
         }
     }
 
@@ -428,7 +453,11 @@ public class Settings {
     public void setSecredLevelStatus(Level level, SecretLevelStatus status) {
         switch (level.getType()) {
             case Secret:
-                setSetting(Setting.SECRET_LEVEL_STATUS.toString() + level, status);
+                setSetting(Setting.SECRET_LEVEL_STATUS.toString() + getLevelNumber(level), status);
         }
+    }
+
+    private int getLevelNumber(Level level) {
+        return level.getLevelNumber();
     }
 }

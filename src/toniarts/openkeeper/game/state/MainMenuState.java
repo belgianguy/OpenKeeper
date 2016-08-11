@@ -380,7 +380,7 @@ public class MainMenuState extends AbstractAppState implements ScreenController 
                         subObjectiveImage.setHeight(img.getHeight());
 
                         // Play some tunes!!
-                        levelBriefing = new AudioNode(assetManager, ConversionUtils.getCanonicalAssetKey("Sounds/speech_mentor/lev" + String.format("%02d", selectedLevel.getLevel()) + "001.mp2"), DataType.Buffer);
+                        levelBriefing = new AudioNode(assetManager, ConversionUtils.getCanonicalAssetKey("Sounds/speech_mentor/lev" + String.format("%02d", selectedLevel.getLevelNumber()) + "001.mp2"), DataType.Buffer);
                         levelBriefing.setLooping(false);
                         levelBriefing.setDirectional(false);
                         levelBriefing.setPositional(false);
@@ -658,6 +658,16 @@ public class MainMenuState extends AbstractAppState implements ScreenController 
         if ("campaign".equals(type.toLowerCase())) {
             // Disable us
             setEnabled(false);
+
+            // Set the current level as IN_PROGRESS
+            app.getUserSettings().setLevelStatus(selectedLevel, Settings.LevelStatus.IN_PROGRESS);
+            app.getUserSettings().increaseLevelAttempts(selectedLevel);
+            app.getUserSettings().setLevelNumber(selectedLevel.getLevelNumber());
+            try {
+                app.getUserSettings().save();
+            } catch (IOException e) {
+                logger.log(java.util.logging.Level.WARNING, "Could not save user settings!", e);
+            }
 
             // Create the level state
             GameState gameState = new GameState(selectedLevel.getKwdFile(), null);

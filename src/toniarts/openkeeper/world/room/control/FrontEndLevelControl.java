@@ -24,6 +24,7 @@ import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
 import toniarts.openkeeper.game.data.Level;
+import toniarts.openkeeper.game.data.Settings;
 
 /**
  * Controls level graphics
@@ -42,10 +43,15 @@ public class FrontEndLevelControl extends AbstractControl {
     private static final Vector3f MOVE_VECTOR = new Vector3f(0, 0.025f, 0);
     private static final int ACTIVATE_ANIMATION_LENGTH = 250;
     private static final int DEACTIVATE_ANIMATION_LENGTH = 1500;
+    private boolean unlocked;
 
     public FrontEndLevelControl(Level level, AssetManager assetManager) {
         this.level = level;
         this.assetManager = assetManager;
+    }
+
+    public boolean isUnlocked() {
+        return Settings.getInstance().getSettingInteger(Settings.Setting.LEVEL_NUMBER) >= level.getLevelNumber();
     }
 
     @Override
@@ -58,7 +64,7 @@ public class FrontEndLevelControl extends AbstractControl {
 
     @Override
     protected void controlUpdate(float tpf) {
-        if (moved == false) {
+        if (isUnlocked() && moved == false) {
             if (lastTime != null) {
                 long elapsedTime = System.currentTimeMillis() - lastTime;
                 if (active) {

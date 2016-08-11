@@ -27,6 +27,8 @@ import com.jme3.scene.BatchNode;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import java.awt.Point;
+
+import toniarts.openkeeper.game.data.Settings;
 import toniarts.openkeeper.utils.FullMoon;
 import toniarts.openkeeper.game.data.Level;
 import toniarts.openkeeper.game.data.Level.LevelType;
@@ -108,7 +110,7 @@ public class HeroGateFrontEnd extends GenericRoom {
      *
      * @param map node to attach to
      * @param type level type
-     * @param level level number
+     * @param levelnumber level number
      * @param variation variation, like level "a" etc.
      * @param assetManager the asset manager instance
      * @param start starting point for the room
@@ -182,31 +184,33 @@ public class HeroGateFrontEnd extends GenericRoom {
                     addCandles(root, assetManager, start, p);
                     // Map
                     Node map = new Node("Map");
-                    for (int x = 1; x < 21; x++) {
-                        switch (x) {
+                    final int playerLevelReached = Settings.getInstance().getSettingInteger(Settings.Setting.LEVEL_NUMBER);
+                    for (int currentLevel = 1; currentLevel < 21; currentLevel++) {
+                        switch (currentLevel) {
                             case 6:
-                                attachAndCreateLevel(map, LevelType.Level, x, "a", assetManager, start, p, false);
-                                map.attachChild(loadObject("3dmaplevel" + x + "a" + "_arrows", assetManager, start, p, false));
-                                attachAndCreateLevel(map, LevelType.Level, x, "b", assetManager, start, p, false);
-                                map.attachChild(loadObject("3dmaplevel" + x + "b" + "_arrows", assetManager, start, p, false));
+                                attachAndCreateLevel(map, LevelType.Level, currentLevel, "a", assetManager, start, p, false);
+                                //attachArrows(start, p, map, currentLevel, "3dmaplevel" + currentLevel + "a" + "_arrows", playerLevelReached);
+                                attachAndCreateLevel(map, LevelType.Level, currentLevel, "b", assetManager, start, p, false);
+                                //attachArrows(start, p, map, currentLevel, "3dmaplevel" + currentLevel + "b" + "_arrows", playerLevelReached);
                                 break;
                             case 11:
-                                attachAndCreateLevel(map, LevelType.Level, x, "a", assetManager, start, p, false);
-                                map.attachChild(loadObject("3dmaplevel" + x + "a" + "_arrows", assetManager, start, p, false));
-                                attachAndCreateLevel(map, LevelType.Level, x, "b", assetManager, start, p, false);
-                                map.attachChild(loadObject("3dmaplevel" + x + "b" + "_arrows", assetManager, start, p, false));
-                                attachAndCreateLevel(map, LevelType.Level, x, "c", assetManager, start, p, false);
-                                map.attachChild(loadObject("3dmaplevel" + x + "c" + "_arrows", assetManager, start, p, false));
+                                attachAndCreateLevel(map, LevelType.Level, currentLevel, "a", assetManager, start, p, false);
+                                //attachArrows(start, p, map, currentLevel, "3dmaplevel" + currentLevel + "a" + "_arrows", playerLevelReached);
+                                attachAndCreateLevel(map, LevelType.Level, currentLevel, "b", assetManager, start, p, false);
+                                //attachArrows(start, p, map, currentLevel, "3dmaplevel" + currentLevel + "b" + "_arrows", playerLevelReached);
+                                attachAndCreateLevel(map, LevelType.Level, currentLevel, "c", assetManager, start, p, false);
+                                //attachArrows(start, p, map, currentLevel, "3dmaplevel" + currentLevel + "c" + "_arrows", playerLevelReached);
                                 break;
                             case 15:
-                                attachAndCreateLevel(map, LevelType.Level, x, "a", assetManager, start, p, false);
-                                map.attachChild(loadObject("3dmaplevel" + x + "a" + "_arrows", assetManager, start, p, false));
-                                attachAndCreateLevel(map, LevelType.Level, x, "b", assetManager, start, p, false);
-                                map.attachChild(loadObject("3dmaplevel" + x + "b" + "_arrows", assetManager, start, p, false));
+                                attachAndCreateLevel(map, LevelType.Level, currentLevel, "a", assetManager, start, p, false);
+                                //attachArrows(start, p, map, currentLevel, "3dmaplevel" + currentLevel + "a" + "_arrows", playerLevelReached);
+                                attachAndCreateLevel(map, LevelType.Level, currentLevel, "b", assetManager, start, p, false);
+                                //attachArrows(start, p, map, currentLevel, "3dmaplevel" + currentLevel + "b" + "_arrows", playerLevelReached);
                                 break;
                             default:
-                                attachAndCreateLevel(map, LevelType.Level, x, null, assetManager, start, p, false);
-                                map.attachChild(loadObject("3dmaplevel" + x + "_arrows", assetManager, start, p, false));
+                                attachAndCreateLevel(map, LevelType.Level, currentLevel, null, assetManager, start, p, false);
+                                map.attachChild(loadObject("3dmaplevel" + currentLevel + "_arrows", assetManager, start, p, false));
+                                //attachArrows(start, p, map, currentLevel, "3dmaplevel" + currentLevel + "_arrows", playerLevelReached);
                         }
                     }   // Secret levels
                     for (int x = 1; x < 6; x++) {
@@ -233,6 +237,12 @@ public class HeroGateFrontEnd extends GenericRoom {
         root.scale(MapLoader.TILE_WIDTH); // Squares anyway...
 
         return root;
+    }
+
+    private void attachArrows(Point start, Point p, Node map, int currentLevel, String prefix, int playerLevelReached) {
+        if(playerLevelReached >= currentLevel) {
+            map.attachChild(loadObject(prefix, assetManager, start, p, false));
+        }
     }
 
     @Override
