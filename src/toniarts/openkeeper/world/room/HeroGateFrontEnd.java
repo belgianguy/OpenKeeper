@@ -36,6 +36,7 @@ import toniarts.openkeeper.tools.convert.AssetsConverter;
 import toniarts.openkeeper.tools.convert.ConversionUtils;
 import toniarts.openkeeper.tools.convert.map.Thing;
 import toniarts.openkeeper.world.MapLoader;
+import toniarts.openkeeper.world.control.BlinkArrowControl;
 import toniarts.openkeeper.world.room.control.FrontEndLevelControl;
 
 /**
@@ -239,8 +240,10 @@ public class HeroGateFrontEnd extends GenericRoom {
     }
 
     private void attachArrows(Point start, Point p, Node map, int currentLevel, String prefix, int playerLevelReached) {
-        if(playerLevelReached >= currentLevel) {
-            map.attachChild(loadObject(prefix, assetManager, start, p, false));
+        if(playerLevelReached == (currentLevel - 1)) {
+            final Spatial spatial = loadObject(prefix, assetManager, start, p, false);
+            spatial.addControl(new BlinkArrowControl(assetManager));
+            map.attachChild(spatial);
         }
     }
 

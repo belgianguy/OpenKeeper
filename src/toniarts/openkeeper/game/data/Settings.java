@@ -62,7 +62,7 @@ public class Settings {
     public enum Setting implements ISetting {
 
         // Campaign
-        LEVEL_NUMBER(Integer.class, 1, SettingCategory.CAMPAIGN),
+        LEVEL_NUMBER(Integer.class, 0, SettingCategory.CAMPAIGN),
         LEVEL_ATTEMPTS(Integer.class, 0, SettingCategory.CAMPAIGN),
         LEVEL_STATUS(LevelStatus.class, LevelStatus.NOT_COMPLETED, SettingCategory.CAMPAIGN),
         SECRET_LEVEL_STATUS(LevelStatus.class, SecretLevelStatus.NOT_DISCOVED, SettingCategory.CAMPAIGN),

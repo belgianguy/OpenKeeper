@@ -43,7 +43,6 @@ public class FrontEndLevelControl extends AbstractControl {
     private static final Vector3f MOVE_VECTOR = new Vector3f(0, 0.025f, 0);
     private static final int ACTIVATE_ANIMATION_LENGTH = 250;
     private static final int DEACTIVATE_ANIMATION_LENGTH = 1500;
-    private boolean unlocked;
 
     public FrontEndLevelControl(Level level, AssetManager assetManager) {
         this.level = level;
@@ -51,7 +50,7 @@ public class FrontEndLevelControl extends AbstractControl {
     }
 
     public boolean isUnlocked() {
-        return Settings.getInstance().getSettingInteger(Settings.Setting.LEVEL_NUMBER) >= level.getLevelNumber();
+        return Settings.getInstance().getSettingInteger(Settings.Setting.LEVEL_NUMBER) + 1 >= level.getLevelNumber();
     }
 
     @Override
