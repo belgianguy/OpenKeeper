@@ -109,6 +109,10 @@ public class FrontEndLevelControl extends AbstractControl {
         this.active = active;
     }
 
+    public boolean isActive() {
+        return active;
+    }
+
     /**
      * Get the Level Object
      *

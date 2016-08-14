@@ -14,6 +14,7 @@ import com.jme3.texture.Texture;
 import toniarts.openkeeper.tools.convert.ConversionUtils;
 import toniarts.openkeeper.tools.convert.KmfModelLoader;
 import toniarts.openkeeper.utils.AssetUtils;
+import toniarts.openkeeper.world.room.control.FrontEndLevelControl;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,13 +37,16 @@ public class BlinkArrowControl extends AbstractControl {
     private float tick = 0;
     public final float PERIOD = 0.5f;
     private boolean flashed = false;
+    private FrontEndLevelControl frontEndLevelControl;
 
-    public BlinkArrowControl(AssetManager assetManager) {
+    public BlinkArrowControl(AssetManager assetManager, FrontEndLevelControl frontEndLevelControl) {
         this.assetManager = assetManager;
+        this.frontEndLevelControl = frontEndLevelControl;
     }
 
-    public BlinkArrowControl(AssetManager assetManager, int time) {
+    public BlinkArrowControl(AssetManager assetManager, FrontEndLevelControl frontEndLevelControl, int time) {
         this.assetManager = assetManager;
+        this.frontEndLevelControl = frontEndLevelControl;
         this.time = time;
         if (this.time == 0) {
             unlimited = true;
@@ -63,10 +67,14 @@ public class BlinkArrowControl extends AbstractControl {
             return;
         }
 
-        if (tick >= PERIOD) {
-            tick -= PERIOD;
-            flashed = !flashed;
-            swapTexture((Node) spatial, flashed);
+        if(!isActive()) {
+            if (tick >= PERIOD) {
+                tick -= PERIOD;
+                flashed = !flashed;
+                swapTexture((Node) spatial, flashed);
+            }
+        } else {
+            setRedTexture((Node) spatial);
         }
 
         if (time < 0) {
@@ -81,6 +89,14 @@ public class BlinkArrowControl extends AbstractControl {
         if (!unlimited) {
             time -= tpf;
         }
+    }
+
+    private boolean isActive() {
+        if(frontEndLevelControl == null) {
+            return false;
+        }
+        return frontEndLevelControl.isActive();
+
     }
 
     private void swapTexture(Node node, boolean flashed) {
@@ -103,6 +119,34 @@ public class BlinkArrowControl extends AbstractControl {
                             diffuseTexture = RED_ARROW_TEXTURE;
                         }
 
+                        try {
+                            Texture texture = assetManager.loadTexture(new TextureKey(ConversionUtils.getCanonicalAssetKey(diffuseTexture), false));
+                            material.setTexture("DiffuseMap", texture);
+
+                            AssetUtils.assignMapsToMaterial(assetManager, material);
+                        } catch (Exception e) {
+                            logger.log(Level.WARNING, "Error applying texture: {0}: {1}", new Object[]{diffuseTexture, e.getMessage()});
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    private void setRedTexture(Node node) {
+        if (node == null) {
+            return;
+        }
+
+        node.depthFirstTraversal(new SceneGraphVisitor() {
+            @Override
+            public void visit(Spatial spatial) {
+                if (spatial instanceof Geometry) {
+                    Material material = ((Geometry) spatial).getMaterial();
+
+                    Integer texCount = spatial.getUserData(KmfModelLoader.MATERIAL_ALTERNATIVE_TEXTURES_COUNT);
+                    if(texCount > 0) {
+                        final String diffuseTexture = RED_ARROW_TEXTURE;
                         try {
                             Texture texture = assetManager.loadTexture(new TextureKey(ConversionUtils.getCanonicalAssetKey(diffuseTexture), false));
                             material.setTexture("DiffuseMap", texture);
