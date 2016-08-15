@@ -389,9 +389,11 @@ public class Settings {
     public LevelStatus getLevelStatus(Level level) {
         switch (level.getType()) {
             case Level:
-                return LevelStatus.valueOf((String) getSetting(Setting.LEVEL_STATUS.toString() + getLevelNumber(level), Setting.LEVEL_STATUS.getDefaultValue()));
+                final String key = Setting.LEVEL_STATUS.toString() + getLevelNumber(level);
+                return LevelStatus.valueOf((String) (getSetting(key, Setting.LEVEL_STATUS.getDefaultValue().toString())));
             case MPD:
-                return LevelStatus.valueOf((String) getSetting(Setting.MPD_LEVEL_STATUS.toString() + getLevelNumber(level), Setting.MPD_LEVEL_STATUS.getDefaultValue()));
+                final String key_mpd = Setting.MPD_LEVEL_STATUS.toString() + getLevelNumber(level);
+                return LevelStatus.valueOf((String) (getSetting(key_mpd, Setting.MPD_LEVEL_STATUS.getDefaultValue().toString())));
         }
         return null;
     }

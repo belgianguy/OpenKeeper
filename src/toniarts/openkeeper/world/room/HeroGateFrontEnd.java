@@ -20,15 +20,20 @@ import com.jme3.animation.AnimChannel;
 import com.jme3.animation.AnimControl;
 import com.jme3.animation.LoopMode;
 import com.jme3.asset.AssetManager;
+import com.jme3.asset.TextureKey;
+import com.jme3.material.Material;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
-import com.jme3.scene.BatchNode;
-import com.jme3.scene.Node;
-import com.jme3.scene.Spatial;
-import java.awt.Point;
+import com.jme3.scene.*;
 
+import java.awt.Point;
+import java.util.logging.Logger;
+
+import com.jme3.texture.Texture;
 import toniarts.openkeeper.game.data.Settings;
+import toniarts.openkeeper.tools.convert.KmfModelLoader;
+import toniarts.openkeeper.utils.AssetUtils;
 import toniarts.openkeeper.utils.FullMoon;
 import toniarts.openkeeper.game.data.Level;
 import toniarts.openkeeper.game.data.Level.LevelType;
@@ -47,6 +52,8 @@ import toniarts.openkeeper.world.room.control.FrontEndLevelControl;
  * @author Toni Helenius <helenius.toni@gmail.com>
  */
 public class HeroGateFrontEnd extends GenericRoom {
+
+    private static final Logger logger = Logger.getLogger(HeroGateFrontEnd.class.getName());
 
     public HeroGateFrontEnd(AssetManager assetManager, RoomInstance roomInstance, Thing.Room.Direction direction) {
         super(assetManager, roomInstance, direction);
@@ -125,15 +132,53 @@ public class HeroGateFrontEnd extends GenericRoom {
             objName = "Secret_Level";
         }
 
-        Spatial lvl = loadObject(objName + levelnumber + (variation == null ? "" : variation), assetManager, start, p, randomizeAnimation);
-        final FrontEndLevelControl frontEndLevelControl = new FrontEndLevelControl(new Level(type, levelnumber, variation), assetManager);
+        final String model = objName + levelnumber + (variation == null ? "" : variation);
+        final Spatial lvl = loadObject(model, assetManager, start, p, randomizeAnimation);
+        final Level level = new Level(type, levelnumber, variation);
+
+        // Set DECAY Texture if this level has already been won by the player
+        boolean levelWasWon = Settings.LevelStatus.COMPLETED.equals(Settings.getInstance().getLevelStatus(level));
+        if(levelWasWon) {
+            setDecayTexture((Node)lvl);
+        }
+
+
+        final FrontEndLevelControl frontEndLevelControl = new FrontEndLevelControl(level, assetManager);
         lvl.addControl(frontEndLevelControl);
         lvl.setBatchHint(Spatial.BatchHint.Never);
         map.attachChild(lvl);
 
-        if(type.equals(LevelType.Level)) {
-            attachArrows(start, p, map, levelnumber, "3dmaplevel" + levelnumber + (variation == null ? "" : variation) + "_arrows", playerLevelReached, frontEndLevelControl);
+        if(type.equals(LevelType.Level) && playerLevelReached == (levelnumber - 1)) {
+            attachArrows(start, p, map, "3dmaplevel" + levelnumber + (variation == null ? "" : variation) + "_arrows", frontEndLevelControl);
         }
+    }
+
+    private void setDecayTexture(Node node) {
+        if (node == null) {
+            return;
+        }
+
+        node.depthFirstTraversal(new SceneGraphVisitor() {
+            @Override
+            public void visit(Spatial spatial) {
+                if (spatial instanceof Geometry) {
+                    Material material = ((Geometry) spatial).getMaterial();
+
+                    Integer texCount = spatial.getUserData(KmfModelLoader.MATERIAL_ALTERNATIVE_TEXTURES_COUNT);
+                    if(texCount != null && texCount.intValue() > 0) {
+                        String diffuseTexture = ((Texture) material.getParam("DiffuseMap").getValue()).getKey().getName().replaceFirst(".png", "_D.png");
+                        try {
+                            Texture texture = assetManager.loadTexture(new TextureKey(ConversionUtils.getCanonicalAssetKey(diffuseTexture), false));
+                            material.setTexture("DiffuseMap", texture);
+
+                            AssetUtils.assignMapsToMaterial(assetManager, material);
+                        } catch (Exception e) {
+                            logger.log(java.util.logging.Level.WARNING, "Error applying texture: {0}: {1}", new Object[]{diffuseTexture, e.getMessage()});
+                        }
+                    }
+                }
+            }
+        });
     }
 
     @Override
@@ -237,12 +282,12 @@ public class HeroGateFrontEnd extends GenericRoom {
         return root;
     }
 
-    private void attachArrows(Point start, Point p, Node map, int currentLevel, String prefix, int playerLevelReached, FrontEndLevelControl frontEndLevelControl) {
-        if(playerLevelReached == (currentLevel - 1)) {
+    private void attachArrows(Point start, Point p, Node map, String prefix, FrontEndLevelControl frontEndLevelControl) {
+
             final Spatial spatial = loadObject(prefix, assetManager, start, p, false);
             spatial.addControl(new BlinkArrowControl(assetManager, frontEndLevelControl));
             map.attachChild(spatial);
-        }
+
     }
 
     @Override
