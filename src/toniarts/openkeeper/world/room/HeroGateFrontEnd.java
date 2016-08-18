@@ -31,6 +31,7 @@ import java.awt.Point;
 import java.util.logging.Logger;
 
 import com.jme3.texture.Texture;
+import toniarts.openkeeper.Main;
 import toniarts.openkeeper.game.data.Settings;
 import toniarts.openkeeper.tools.convert.KmfModelLoader;
 import toniarts.openkeeper.utils.AssetUtils;
@@ -137,7 +138,7 @@ public class HeroGateFrontEnd extends GenericRoom {
         final Level level = new Level(type, levelnumber, variation);
 
         // Set DECAY Texture if this level has already been won by the player
-        boolean levelWasWon = Settings.LevelStatus.COMPLETED.equals(Settings.getInstance().getLevelStatus(level));
+        boolean levelWasWon = Settings.LevelStatus.COMPLETED.equals(Main.getUserSettings().getLevelStatus(level));
         if(levelWasWon) {
             setDecayTexture((Node)lvl);
         }
@@ -235,7 +236,7 @@ public class HeroGateFrontEnd extends GenericRoom {
                     addCandles(root, assetManager, start, p);
                     // Map
                     Node map = new Node("Map");
-                    final int playerLevelReached = Settings.getInstance().getSettingInteger(Settings.Setting.LEVEL_NUMBER);
+                    final int playerLevelReached = Main.getUserSettings().getSettingInteger(Settings.Setting.LEVEL_NUMBER);
                     for (int currentLevel = 1; currentLevel < 21; currentLevel++) {
                         switch (currentLevel) {
                             case 6:

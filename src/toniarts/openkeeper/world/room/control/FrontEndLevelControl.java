@@ -23,6 +23,7 @@ import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
+import toniarts.openkeeper.Main;
 import toniarts.openkeeper.game.data.Level;
 import toniarts.openkeeper.game.data.Settings;
 
@@ -50,7 +51,7 @@ public class FrontEndLevelControl extends AbstractControl {
     }
 
     public boolean isUnlocked() {
-        return Settings.getInstance().getSettingInteger(Settings.Setting.LEVEL_NUMBER) + 1 >= level.getLevelNumber();
+        return Main.getUserSettings().getSettingInteger(Settings.Setting.LEVEL_NUMBER) + 1 >= level.getLevelNumber();
     }
 
     @Override
