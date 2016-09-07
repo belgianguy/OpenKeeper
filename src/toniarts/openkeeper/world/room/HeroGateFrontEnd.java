@@ -40,9 +40,10 @@ import toniarts.openkeeper.game.data.Level;
 import toniarts.openkeeper.game.data.Level.LevelType;
 import toniarts.openkeeper.tools.convert.AssetsConverter;
 import toniarts.openkeeper.tools.convert.ConversionUtils;
-import toniarts.openkeeper.tools.convert.map.Thing;
+import toniarts.openkeeper.utils.FullMoon;
 import toniarts.openkeeper.world.MapLoader;
 import toniarts.openkeeper.world.control.BlinkArrowControl;
+import toniarts.openkeeper.world.object.ObjectLoader;
 import toniarts.openkeeper.world.room.control.FrontEndLevelControl;
 
 /**
@@ -56,8 +57,8 @@ public class HeroGateFrontEnd extends GenericRoom {
 
     private static final Logger logger = Logger.getLogger(HeroGateFrontEnd.class.getName());
 
-    public HeroGateFrontEnd(AssetManager assetManager, RoomInstance roomInstance, Thing.Room.Direction direction) {
-        super(assetManager, roomInstance, direction);
+    public HeroGateFrontEnd(AssetManager assetManager, RoomInstance roomInstance, ObjectLoader objectLoader) {
+        super(assetManager, roomInstance, objectLoader);
     }
 
     /**
@@ -258,8 +259,7 @@ public class HeroGateFrontEnd extends GenericRoom {
                         }
                     }   // Secret levels
                     for (int x = 1; x < 6; x++) {
-                        if (x == 5 && !FullMoon.isFullMoon())
-                        {
+                        if (x == 5 && !FullMoon.isFullMoon()) {
                             // don't show full moon level
                             continue;
                         }
@@ -293,11 +293,6 @@ public class HeroGateFrontEnd extends GenericRoom {
 
     @Override
     public Spatial getWallSpatial(Point start, WallSection.WallDirection direction) {
-        return null;
-    }
-
-    @Override
-    protected BatchNode constructWall() {
         return null;
     }
 }

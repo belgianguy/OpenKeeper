@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 import toniarts.openkeeper.game.action.ActionPoint;
 import toniarts.openkeeper.game.action.ActionPointState;
+import toniarts.openkeeper.game.action.FlashControl;
 import toniarts.openkeeper.game.control.Control;
 import toniarts.openkeeper.game.data.Keeper;
 import toniarts.openkeeper.game.logic.CreatureSpawnLogicState;
@@ -33,6 +34,7 @@ import toniarts.openkeeper.game.player.PlayerCameraRotateControl;
 import toniarts.openkeeper.game.state.GameState;
 import toniarts.openkeeper.game.state.PlayerState;
 import toniarts.openkeeper.game.state.SoundState;
+import toniarts.openkeeper.game.state.SystemMessageState;
 import toniarts.openkeeper.game.trigger.creature.CreatureTriggerState;
 import toniarts.openkeeper.tools.convert.ConversionUtils;
 import toniarts.openkeeper.tools.convert.map.KwdFile;
@@ -282,15 +284,15 @@ public class TriggerControl extends Control {
             case SET_OBJECTIVE:
                 break;
             case FLASH_ACTION_POINT:
-                WorldState world = stateManager.getState(WorldState.class);
-                ap = getActionPoint((Short) trigger.getUserData("actionPointId"));
+                ap = getActionPoint(trigger.getUserData("actionPointId", short.class));
                 time = trigger.getUserData("value", int.class);
                 enable = trigger.getUserData("available", short.class) != 0;
-                for (int x = (int) ap.getStart().x; x <= (int) ap.getEnd().x; x++) {
-                    for (int y = (int) ap.getStart().y; y <= (int) ap.getEnd().y; y++) {
-                        world.flashTile(x, y, time, enable);
-                    }
+                if (enable && time != 0) {
+                    ap.addControl(new FlashControl(time));
+                } else if (!enable) {
+                    ap.removeControl(FlashControl.class);
                 }
+                ap.getParent().getWorldState().flashTile(enable, ap.getPoints());
                 break;
 
             case REVEAL_ACTION_POINT:
@@ -304,13 +306,13 @@ public class TriggerControl extends Control {
                 Point pos = new Point(trigger.getUserData("posX", int.class), trigger.getUserData("posY", int.class));
                 short terrainId = trigger.getUserData("terrainId", short.class);
                 playerId = trigger.getUserData("playerId", short.class);
-                stateManager.getState(WorldState.class).alterTerrain(pos, terrainId, playerId);
+                stateManager.getState(WorldState.class).alterTerrain(pos, terrainId, playerId, true);
                 break;
 
             case PLAY_SPEECH:
                 int speechId = trigger.getUserData("speechId", int.class);
                 stateManager.getState(SoundState.class).attachSpeech(speechId);
-
+                stateManager.getState(SystemMessageState.class).addMessage(SystemMessageState.MessageType.INFO, String.format("${level.%d}", speechId - 1));
                 int pathId = trigger.getUserData("pathId", int.class);
                 // text show when Cinematic camera by pathId
                 boolean introduction = trigger.getUserData("introduction", short.class) != 0;

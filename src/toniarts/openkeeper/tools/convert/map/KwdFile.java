@@ -945,9 +945,7 @@ public final class KwdFile {
             List<Integer> roomEffects = new ArrayList<>(8);
             for (int x = 0; x < 8; x++) {
                 int effectId = ConversionUtils.readUnsignedShort(file);
-                if (effectId > 0) {
-                    roomEffects.add(effectId);
-                }
+                roomEffects.add(effectId);
             }
             room.setEffects(roomEffects);
             room.setRoomId((short) file.readUnsignedByte());
@@ -959,9 +957,7 @@ public final class KwdFile {
             List<Short> roomObjects = new ArrayList<>(8);
             for (int x = 0; x < 8; x++) {
                 short objectId = (short) file.readUnsignedByte();
-                if (objectId > 0) {
-                    roomObjects.add(objectId);
-                }
+                roomObjects.add(objectId);
             }
             room.setObjects(roomObjects);
 
@@ -1180,7 +1176,7 @@ public final class KwdFile {
             creature.setAnimHappyResource(readArtResource(file));
             creature.setAnimAngryResource(readArtResource(file));
             creature.setAnimStunnedPoseResource(readArtResource(file));
-            creature.setAnimSwingResource(readArtResource(file));
+            creature.setAnimInHandResource(readArtResource(file));
             creature.setAnimSleepResource(readArtResource(file));
             creature.setAnimEatResource(readArtResource(file));
             creature.setAnimResearchResource(readArtResource(file));

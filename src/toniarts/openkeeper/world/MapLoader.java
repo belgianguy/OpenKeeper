@@ -49,9 +49,10 @@ import toniarts.openkeeper.tools.convert.map.ArtResource;
 import toniarts.openkeeper.tools.convert.map.KwdFile;
 import toniarts.openkeeper.tools.convert.map.Room;
 import toniarts.openkeeper.tools.convert.map.Terrain;
+import toniarts.openkeeper.tools.convert.map.Thing;
 import toniarts.openkeeper.utils.AssetUtils;
-import toniarts.openkeeper.world.control.FlashTileControl;
 import toniarts.openkeeper.world.effect.EffectManagerState;
+import toniarts.openkeeper.world.object.ObjectLoader;
 import toniarts.openkeeper.world.room.GenericRoom;
 import toniarts.openkeeper.world.room.RoomConstructor;
 import toniarts.openkeeper.world.room.RoomInstance;
@@ -68,7 +69,8 @@ public abstract class MapLoader implements ILoader<KwdFile> {
 
     public final static float TILE_WIDTH = 1;
     public final static float TILE_HEIGHT = 1;
-
+    public final static ColorRGBA COLOR_FLASH = new ColorRGBA(0.8f, 0, 0, 1);
+    public final static ColorRGBA COLOR_TAG = new ColorRGBA(0, 0, 0.8f, 1);
     private final static int PAGE_SQUARE_SIZE = 8; // Divide the terrain to square "pages"
     private final static int FLOOR_INDEX = 0;
     private final static int WALL_INDEX = 1;
@@ -81,6 +83,7 @@ public abstract class MapLoader implements ILoader<KwdFile> {
     private final EffectManagerState effectManager;
     private Node roomsNode;
     private final WorldState worldState;
+    private final ObjectLoader objectLoader;
     private final List<RoomInstance> rooms = new ArrayList<>(); // The list of rooms
     private final List<EntityInstance<Terrain>> waterBatches = new ArrayList<>(); // Lakes and rivers
     private final List<EntityInstance<Terrain>> lavaBatches = new ArrayList<>(); // Lakes and rivers, but hot
@@ -90,11 +93,12 @@ public abstract class MapLoader implements ILoader<KwdFile> {
     private final HashMap<Point, EntityInstance<Terrain>> terrainBatchCoordinates = new HashMap<>(); // A quick glimpse whether terrain batch at specific coordinates is already "found"
     private static final Logger logger = Logger.getLogger(MapLoader.class.getName());
 
-    public MapLoader(AssetManager assetManager, KwdFile kwdFile, EffectManagerState effectManager, WorldState worldState) {
+    public MapLoader(AssetManager assetManager, KwdFile kwdFile, EffectManagerState effectManager, WorldState worldState, ObjectLoader objectLoader) {
         this.kwdFile = kwdFile;
         this.assetManager = assetManager;
         this.effectManager = effectManager;
         this.worldState = worldState;
+        this.objectLoader = objectLoader;
 
         // Create modifiable tiles
         mapData = new MapData(kwdFile);
@@ -109,6 +113,14 @@ public abstract class MapLoader implements ILoader<KwdFile> {
         generatePages(terrain);
         roomsNode = new Node("Rooms");
         terrain.attachChild(roomsNode);
+
+        // Go through the fixed rooms and construct them
+        for (Thing thing : kwdFile.getThings()) {
+            if (thing instanceof Thing.Room) {
+                Point p = new Point(((Thing.Room) thing).getPosX(), ((Thing.Room) thing).getPosY());
+                handleRoom(p, kwdFile.getRoomByTerrain(mapData.getTile(p).getTerrain().getTerrainId()), (Thing.Room) thing);
+            }
+        }
 
         // Go through the map
         int tilesCount = mapData.getWidth() * object.getMap().getHeight();
@@ -204,53 +216,63 @@ public abstract class MapLoader implements ILoader<KwdFile> {
     private void setTileMaterialToGeometries(final TileData tile, final Node node) {
 
         // Change the material on geometries
-        if (tile.isSelected() || tile.getTerrain().getFlags().contains(Terrain.TerrainFlag.DECAY)) {
-            node.depthFirstTraversal(new SceneGraphVisitor() {
-                @Override
-                public void visit(Spatial spatial) {
-                    if (spatial instanceof Geometry) {
-                        Material material = ((Geometry) spatial).getMaterial();
+        if (!tile.isFlashed() && !tile.isSelected()
+                && !tile.getTerrain().getFlags().contains(Terrain.TerrainFlag.DECAY)) {
+            return;
+        }
 
-                        // Decay
-                        if (tile.getTerrain().getFlags().contains(Terrain.TerrainFlag.DECAY) && tile.getTerrain().getTextureFrames() > 1) {
+        node.depthFirstTraversal(new SceneGraphVisitor() {
+            @Override
+            public void visit(Spatial spatial) {
+                if (!(spatial instanceof Geometry)) {
+                    return;
+                }
 
-                            Integer texCount = spatial.getUserData(KmfModelLoader.MATERIAL_ALTERNATIVE_TEXTURES_COUNT);
-                            if (texCount != null) {
+                Material material = ((Geometry) spatial).getMaterial();
 
-                                // FIXME: This doesn't sit well with the material thinking (meaning we produce the actual material files)
-                                // Now we have a random starting texture...
-                                int textureIndex = tile.getTerrain().getTextureFrames() - (int) Math.ceil(tile.getHealthPercent() / (100f / tile.getTerrain().getTextureFrames()));
-                                String diffuseTexture = ((Texture) material.getParam("DiffuseMap").getValue()).getKey().getName().replaceFirst("_DECAY\\d", ""); // Unharmed texture
-                                if (textureIndex > 0) {
+                // Decay
+                if (tile.getTerrain().getFlags().contains(Terrain.TerrainFlag.DECAY) && tile.getTerrain().getTextureFrames() > 1) {
 
-                                    // The first one doesn't have a number
-                                    if (textureIndex == 1) {
-                                        diffuseTexture = diffuseTexture.replaceFirst(".png", "_DECAY.png");
-                                    } else {
-                                        diffuseTexture = diffuseTexture.replaceFirst(".png", "_DECAY" + textureIndex + ".png");
-                                    }
-                                }
-                                try {
-                                    Texture texture = assetManager.loadTexture(new TextureKey(ConversionUtils.getCanonicalAssetKey(diffuseTexture), false));
-                                    material.setTexture("DiffuseMap", texture);
+                    Integer texCount = spatial.getUserData(KmfModelLoader.MATERIAL_ALTERNATIVE_TEXTURES_COUNT);
+                    if (texCount != null) {
 
-                                    AssetUtils.assignMapsToMaterial(assetManager, material);
-                                } catch (Exception e) {
-                                    logger.log(Level.WARNING, "Error applying decay texture: {0} to {1} terrain! ({2})", new Object[]{diffuseTexture, tile.getTerrain().getName(), e.getMessage()});
-                                }
+                        // FIXME: This doesn't sit well with the material thinking (meaning we produce the actual material files)
+                        // Now we have a random starting texture...
+                        int textureIndex = tile.getTerrain().getTextureFrames() - (int) Math.ceil(tile.getHealthPercent() / (100f / tile.getTerrain().getTextureFrames()));
+                        String diffuseTexture = ((Texture) material.getParam("DiffuseMap").getValue()).getKey().getName().replaceFirst("_DECAY\\d", ""); // Unharmed texture
+                        if (textureIndex > 0) {
+
+                            // The first one doesn't have a number
+                            if (textureIndex == 1) {
+                                diffuseTexture = diffuseTexture.replaceFirst(".png", "_DECAY.png");
+                            } else {
+                                diffuseTexture = diffuseTexture.replaceFirst(".png", "_DECAY" + textureIndex + ".png");
                             }
                         }
+                        try {
+                            Texture texture = assetManager.loadTexture(new TextureKey(ConversionUtils.getCanonicalAssetKey(diffuseTexture), false));
+                            material.setTexture("DiffuseMap", texture);
 
-                        // Selection
-                        if (tile.isSelected()) {
-                            material.setColor("Ambient", new ColorRGBA(0, 0, 0.8f, 1));
-                            material.setBoolean("UseMaterialColors", true);
+                            AssetUtils.assignMapsToMaterial(assetManager, material);
+                        } catch (Exception e) {
+                            logger.log(Level.WARNING, "Error applying decay texture: {0} to {1} terrain! ({2})", new Object[]{diffuseTexture, tile.getTerrain().getName(), e.getMessage()});
                         }
                     }
                 }
+
+                if (tile.isFlashed()) {
+                    material.setColor("Ambient", COLOR_FLASH);
+                    material.setBoolean("UseMaterialColors", true);
+                }
+                if (tile.isSelected()) {
+                    material.setColor("Ambient", COLOR_TAG);
+                    material.setBoolean("UseMaterialColors", true);
+                }
+
             }
-            );
-        }
+
+        });
+
     }
 
     /**
@@ -339,7 +361,7 @@ public abstract class MapLoader implements ILoader<KwdFile> {
     private Spatial getRoomWall(TileData tile, WallDirection direction) {
         Point p = tile.getLocation();
         Room room = kwdFile.getRoomByTerrain(tile.getTerrainId());
-        RoomInstance roomInstance = handleRoom(p, room);
+        RoomInstance roomInstance = handleRoom(p, room, null);
         GenericRoom gr = roomActuals.get(roomInstance);
         return gr.getWallSpatial(p, direction);
     }
@@ -472,7 +494,7 @@ public abstract class MapLoader implements ILoader<KwdFile> {
 
             // Construct the actual room
             Room room = kwdFile.getRoomByTerrain(terrain.getTerrainId());
-            handleRoom(p, room);
+            handleRoom(p, room, null);
 
             // Swap the terrain if this is a bridge
             terrain = kwdFile.getTerrainBridge(tile.getFlag(), room);
@@ -526,16 +548,25 @@ public abstract class MapLoader implements ILoader<KwdFile> {
 
     }
 
-    private RoomInstance handleRoom(Point p, Room room) {
+    private RoomInstance handleRoom(Point p, Room room, Thing.Room thing) {
         if (roomCoordinates.containsKey(p)) {
             RoomInstance roomInstance = roomCoordinates.get(p);
             return roomInstance;
         }
 
-        RoomInstance roomInstance = new RoomInstance(room, mapData);
+        RoomInstance roomInstance = new RoomInstance(room, mapData, (thing != null ? thing.getDirection() : null));
         findRoom(p, roomInstance);
         findRoomWallSections(roomInstance);
         rooms.add(roomInstance);
+
+        // Put the thing attributes in
+        if (thing != null) {
+            for (Point roomPoint : roomInstance.getCoordinates()) {
+                TileData tile = mapData.getTile(roomPoint);
+                tile.setPlayerId(thing.getPlayerId());
+                tile.setHealth((int) (tile.getTerrain().getMaxHealth() * (thing.getInitialHealth() / 100f)));
+            }
+        }
 
         Spatial roomNode = handleRoom(roomInstance);
         roomsNode.attachChild(roomNode);
@@ -638,38 +669,13 @@ public abstract class MapLoader implements ILoader<KwdFile> {
         sideTileNode.setLocalTranslation(p.x * TILE_WIDTH, 0, p.y * TILE_WIDTH);
     }
 
-    public void flashTile(int x, int y, int time, boolean enabled) {
+    public void flashTile(boolean enabled, List<Point> points) {
 
-        Point p = new Point(x, y);
-        Node terrainNode = (Node) map.getChild(0);
-        Node pageNode = getPageNode(p, terrainNode);
-
-        Node tileNode = getTileNode(p, (Node) pageNode.getChild(FLOOR_INDEX));
-        if (tileNode != null) {
-            if (enabled) {
-                tileNode.addControl(new FlashTileControl(time));
-            } else {
-                tileNode.removeControl(FlashTileControl.class);
-            }
+        for (Point p : points) {
+            mapData.getTile(p.x, p.y).setFlashed(enabled);
         }
 
-        tileNode = getTileNode(p, (Node) pageNode.getChild(WALL_INDEX));
-        if (tileNode != null) {
-            if (enabled) {
-                tileNode.addControl(new FlashTileControl(time));
-            } else {
-                tileNode.removeControl(FlashTileControl.class);
-            }
-        }
-
-        tileNode = getTileNode(p, (Node) pageNode.getChild(TOP_INDEX));
-        if (tileNode != null) {
-            if (enabled) {
-                tileNode.addControl(new FlashTileControl(time));
-            } else {
-                tileNode.removeControl(FlashTileControl.class);
-            }
-        }
+        updateTiles(points.toArray(new Point[points.size()]));
     }
 
     /**
@@ -820,7 +826,7 @@ public abstract class MapLoader implements ILoader<KwdFile> {
      * @param roomInstance the room instance
      */
     private Spatial handleRoom(RoomInstance roomInstance) {
-        GenericRoom room = RoomConstructor.constructRoom(roomInstance, assetManager, effectManager, kwdFile, worldState);
+        GenericRoom room = RoomConstructor.constructRoom(roomInstance, assetManager, effectManager, worldState, objectLoader);
         roomActuals.put(roomInstance, room);
         updateRoomWalls(roomInstance);
         return room.construct();

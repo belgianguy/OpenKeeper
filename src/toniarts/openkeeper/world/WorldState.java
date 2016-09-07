@@ -65,6 +65,7 @@ import toniarts.openkeeper.tools.convert.map.Tile;
 import toniarts.openkeeper.tools.convert.map.Variable;
 import toniarts.openkeeper.utils.Utils;
 import toniarts.openkeeper.view.selection.SelectionArea;
+import toniarts.openkeeper.world.control.FlashTileControl;
 import toniarts.openkeeper.world.creature.CreatureControl;
 import toniarts.openkeeper.world.creature.CreatureLoader;
 import toniarts.openkeeper.world.creature.pathfinding.MapDistance;
@@ -101,6 +102,7 @@ public abstract class WorldState extends AbstractAppState {
     private List<TileChangeListener> tileChangeListener;
     private Map<Short, List<RoomListener>> roomListeners;
     private final GameState gameState;
+    private final FlashTileControl flashTileControl;
 
     private static final Logger logger = Logger.getLogger(WorldState.class.getName());
 
@@ -118,7 +120,8 @@ public abstract class WorldState extends AbstractAppState {
         bulletAppState = new BulletAppState();
 
         // Create the actual map
-        this.mapLoader = new MapLoader(assetManager, kwdFile, effectManager, this) {
+        thingLoader = new ThingLoader(this, kwdFile, assetManager);
+        this.mapLoader = new MapLoader(assetManager, kwdFile, effectManager, this, thingLoader.getObjectLoader()) {
             @Override
             protected void updateProgress(int progress, int max) {
                 WorldState.this.updateProgress(progress, max);
@@ -132,9 +135,10 @@ public abstract class WorldState extends AbstractAppState {
         heuristic = new MapDistance();
 
         // Things
-        thingLoader = new ThingLoader(this, kwdFile, assetManager);
         thingsNode = thingLoader.loadAll(creatureTriggerState);
         worldNode.attachChild(thingsNode);
+
+        flashTileControl = new FlashTileControl(this, (Main) gameState.getApplication());
 
         // Player money
         initPlayerMoney();
@@ -256,6 +260,15 @@ public abstract class WorldState extends AbstractAppState {
                 CreatureLoader.pauseAnimations(creature.getSpatial());
             }
         }
+    }
+
+    @Override
+    public void update(float tpf) {
+        if (!isInitialized() || !isEnabled()) {
+            return;
+        }
+
+        flashTileControl.update(tpf);
     }
 
     public AssetManager getAssetManager() {
@@ -464,7 +477,7 @@ public abstract class WorldState extends AbstractAppState {
         keeper.getGoldControl().addGold(value);
     }
 
-    public void alterTerrain(Point pos, short terrainId, short playerId) {
+    public void alterTerrain(Point pos, short terrainId, short playerId, boolean enqueue) {
         TileData tile = getMapData().getTile(pos.x, pos.y);
         if (tile == null) {
             return;
@@ -475,10 +488,35 @@ public abstract class WorldState extends AbstractAppState {
         if (playerId != 0) {
             tile.setPlayerId(playerId);
         }
+
         // See if room walls are allowed and does this touch any rooms
         updateRoomWalls(tile);
+
         // update one
-        mapLoader.updateTiles(mapLoader.getSurroundingTiles(pos, true));
+        updateTiles(enqueue, mapLoader.getSurroundingTiles(pos, true));
+    }
+
+    /**
+     * Update map tiles, on the scene graph
+     *
+     * @param enqueue if {@code false} this is executed in the current thread,
+     * otherwise it is enqueued to the update loop
+     * @param points the map points to update
+     */
+    protected void updateTiles(boolean enqueue, Point... points) {
+
+        // Enqueue if app is set
+        if (enqueue) {
+
+            app.enqueue(() -> {
+
+                mapLoader.updateTiles(points);
+
+                return null;
+            });
+        } else {
+            mapLoader.updateTiles(points);
+        }
     }
 
     /**
@@ -503,6 +541,8 @@ public abstract class WorldState extends AbstractAppState {
         addPlayerGold(Keeper.KEEPER1_ID, terrain.getGoldValue());
 
         tile.setTerrainId(terrain.getDestroyedTypeTerrainId());
+        tile.setSelected(false, Keeper.KEEPER1_ID);
+        tile.setFlashed(false);
 
         // See if room walls are allowed and does this touch any rooms
         updateRoomWalls(tile);
@@ -527,8 +567,8 @@ public abstract class WorldState extends AbstractAppState {
         }
     }
 
-    public void flashTile(int x, int y, int time, boolean enabled) {
-        mapLoader.flashTile(x, y, time, enabled);
+    public void flashTile(boolean enabled, List<Point> points) {
+        flashTileControl.attach(points, enabled);
     }
 
     /**

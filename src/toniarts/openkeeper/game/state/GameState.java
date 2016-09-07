@@ -152,6 +152,8 @@ public class GameState extends AbstractPauseAwareState implements IGameLogicUpda
                     GameState.this.stateManager.attach(worldState);
 
                     GameState.this.stateManager.attach(new SoundState(false));
+
+                    GameState.this.stateManager.attach(new SystemMessageState(app, false));
                     setProgress(0.60f);
 
                     GameState.this.stateManager.attach(new PartyState(false));
@@ -224,7 +226,11 @@ public class GameState extends AbstractPauseAwareState implements IGameLogicUpda
                         }
                     } else {
                         Keeper player = getPlayer((short) availability.getPlayerId());
-                        setAvailability(player, availability);
+
+                        // Not all the players are participating...
+                        if (player != null) {
+                            setAvailability(player, availability);
+                        }
                     }
                 }
             }
@@ -251,6 +257,7 @@ public class GameState extends AbstractPauseAwareState implements IGameLogicUpda
                 GameState.this.stateManager.getState(ActionPointState.class).setEnabled(true);
                 GameState.this.stateManager.getState(PartyState.class).setEnabled(true);
                 GameState.this.stateManager.getState(SoundState.class).setEnabled(true);
+                GameState.this.stateManager.getState(SystemMessageState.class).setEnabled(true);
 
                 // Set initialized
                 GameState.this.initialized = true;

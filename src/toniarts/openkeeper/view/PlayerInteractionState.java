@@ -31,17 +31,26 @@ import com.jme3.input.event.KeyInputEvent;
 import com.jme3.input.event.MouseButtonEvent;
 import com.jme3.input.event.MouseMotionEvent;
 import com.jme3.input.event.TouchEvent;
+import com.jme3.light.AmbientLight;
+import com.jme3.math.ColorRGBA;
+import com.jme3.math.FastMath;
+import com.jme3.math.Matrix3f;
+import com.jme3.math.Quaternion;
 import com.jme3.math.Ray;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
 import de.lessvoid.nifty.controls.Label;
+import de.lessvoid.nifty.elements.Element;
 import java.awt.Point;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import toniarts.openkeeper.Main;
+import toniarts.openkeeper.game.console.ConsoleState;
 import toniarts.openkeeper.game.data.Settings;
 import toniarts.openkeeper.game.state.AbstractPauseAwareState;
 import toniarts.openkeeper.game.state.CheatState;
@@ -52,12 +61,14 @@ import toniarts.openkeeper.gui.CursorFactory;
 import toniarts.openkeeper.tools.convert.map.Player;
 import toniarts.openkeeper.tools.convert.map.Terrain;
 import toniarts.openkeeper.tools.convert.map.Thing;
+import toniarts.openkeeper.tools.convert.map.Variable;
 import toniarts.openkeeper.utils.Utils;
 import toniarts.openkeeper.view.selection.SelectionArea;
 import toniarts.openkeeper.view.selection.SelectionHandler;
 import toniarts.openkeeper.world.TileData;
 import toniarts.openkeeper.world.WorldState;
 import toniarts.openkeeper.world.control.IInteractiveControl;
+import toniarts.openkeeper.world.creature.CreatureLoader;
 import toniarts.openkeeper.world.room.GenericRoom;
 import toniarts.openkeeper.world.room.RoomInstance;
 
@@ -73,7 +84,7 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
 
     public enum InteractionState {
 
-        NONE, ROOM, SELL, SPELL, TRAP, DOOR, CREATURE
+        NONE, ROOM, SELL, SPELL, TRAP, DOOR, STUFF_IN_HAND
     }
     private Main app;
     private GameState gameState;
@@ -86,20 +97,31 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
     public Vector2f mousePosition = Vector2f.ZERO;
     private InteractionState interactionState = InteractionState.NONE;
     private int itemId;
-    private final Rectangle guiConstraint;
+    private final Element view;
     private boolean isOnGui = false;
     private boolean isTaggable = false;
     private boolean isTagging = false;
     private boolean isOnView = false;
     private boolean isInteractable = false;
     private final Label tooltip;
+    private final KeeperHandQueue keeperHand;
+    private IInteractiveControl itemInHand;
+    private final Node keeperHandNode = new Node("Keeper hand");
     private static final List<String> SLAP_SOUNDS = Arrays.asList(new String[]{"/Global/Slap_1.mp2", "/Global/slap_2.mp2", "/Global/Slap_3.mp2", "/Global/Slap_4.mp2"});
     private static final Logger logger = Logger.getLogger(PlayerInteractionState.class.getName());
 
-    public PlayerInteractionState(Player player, GameState gameState, Rectangle guiConstraint, Label tooltip) {
+    public PlayerInteractionState(Player player, GameState gameState, Element view, Label tooltip) {
         this.player = player;
-        this.guiConstraint = guiConstraint;
+        this.view = view;
         this.tooltip = tooltip;
+
+        // Init the keeper hand
+        keeperHandNode.setLocalScale(500);
+        Quaternion rotation = new Quaternion();
+        rotation.fromAngleAxis(-FastMath.PI / 4, new Vector3f(-1, 1, 0));
+        keeperHandNode.setLocalRotation(rotation);
+        keeperHandNode.addLight(new AmbientLight(ColorRGBA.White));
+        keeperHand = new KeeperHandQueue((int) gameState.getLevelVariable(Variable.MiscVariable.MiscType.MAX_NUMBER_OF_THINGS_IN_HAND));
     }
 
     @Override
@@ -110,6 +132,9 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
         this.stateManager = this.app.getStateManager();
         inputManager = this.app.getInputManager();
         gameState = this.stateManager.getState(GameState.class);
+
+        this.app.getGuiNode().attachChild(keeperHandNode);
+
         // Init handler
         handler = new SelectionHandler(this.app, this) {
             @Override
@@ -126,7 +151,7 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
                     // When building, you can even tag taggables
                     switch (interactionState) {
                         case NONE: {
-                            return isTaggable;
+                            return (isTaggable || itemInHand != null);
                         }
                         case ROOM: {
                             return isOnView;
@@ -151,6 +176,11 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
                     pos = handler.getSelectionArea().getActualStartingCoordinates();
                 } else {
                     pos = handler.getRoundedMousePos();
+                }
+                if (interactionState == InteractionState.NONE && itemInHand != null) {
+                    TileData tile = getWorldHandler().getMapData().getTile((int) pos.x, (int) pos.y);
+                    IInteractiveControl.DroppableStatus status = keeperHand.peek().getDroppableStatus(tile);
+                    return (status != IInteractiveControl.DroppableStatus.NOT_DROPPABLE ? SelectionColorIndicator.BLUE : SelectionColorIndicator.RED);
                 }
                 if (interactionState == InteractionState.SELL) {
                     return SelectionColorIndicator.RED;
@@ -213,6 +243,7 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
 
     @Override
     public void cleanup() {
+        app.getGuiNode().detachChild(keeperHandNode);
         app.getInputManager().removeRawInputListener(this);
         handler.cleanup();
         CheatState cheatState = this.stateManager.getState(CheatState.class);
@@ -259,10 +290,20 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
             handler.getSelectionArea().setEnd(pos);
             handler.updateSelectionBox();
         }
+
+        // Move the picked up item
+        keeperHandNode.setLocalTranslation(evt.getX(), evt.getY(), 0);
     }
 
     @Override
     public void onMouseButtonEvent(MouseButtonEvent evt) {
+        if (isOnGui) {
+            if (setStateFlags()) {
+                setCursor();
+            }
+            return;
+        }
+
         if (evt.getButtonIndex() == MouseInput.BUTTON_LEFT) {
 
             if (interactionState == InteractionState.SPELL && itemId == 2) { // possession
@@ -278,8 +319,17 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
                     // TODO disable selection box
                     setInteractionState(InteractionState.NONE, 0);
                 }
-            } else {
-                if (evt.isPressed()) {
+            } else if (evt.isPressed()) {
+
+                // Creature/object pickup
+                IInteractiveControl interactiveControl = getInteractiveObjectOnCursor();
+                if (interactiveControl != null && !keeperHand.isFull() && interactiveControl.isPickable(player.getPlayerId())) {
+                    keeperHand.push(interactiveControl.pickUp(player.getPlayerId()));
+                    setupItemInHand(interactiveControl);
+                    setCursor();
+                } else {
+
+                    // Selection stuff
                     if (!startSet) {
                         handler.getSelectionArea().setStart(handler.getRoundedMousePos());
                     }
@@ -294,24 +344,39 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
                         Vector2f pos = handler.getRoundedMousePos();
                         getWorldHandler().playSoundAtTile((int) pos.x, (int) pos.y, "/Global/dk1tag.mp2");
                     }
+                }
 
-                } else if (evt.isReleased()) {
-                    startSet = false;
-                    handler.userSubmit(null);
-                    handler.getSelectionArea().setStart(handler.getRoundedMousePos());
-                    handler.updateSelectionBox();
-                    handler.setNoSelectedArea();
-                    if (isTagging) {
-                        isTagging = false;
-                        setCursor();
-                    }
+            } else if (evt.isReleased()) {
+                startSet = false;
+                handler.userSubmit(null);
+                handler.getSelectionArea().setStart(handler.getRoundedMousePos());
+                handler.updateSelectionBox();
+                handler.setNoSelectedArea();
+                if (isTagging) {
+                    isTagging = false;
+                    setCursor();
                 }
             }
         } else if (evt.getButtonIndex() == MouseInput.BUTTON_RIGHT && evt.isReleased()) {
 
             Vector2f pos = handler.getRoundedMousePos();
             if (interactionState == InteractionState.NONE) {
-                if (Main.isDebug()) {
+
+                // Drop
+                if (itemInHand != null) {
+                    TileData tile = getWorldHandler().getMapData().getTile((int) pos.x, (int) pos.y);
+                    IInteractiveControl.DroppableStatus status = keeperHand.peek().getDroppableStatus(tile);
+                    if (status != IInteractiveControl.DroppableStatus.NOT_DROPPABLE) {
+
+                        // Drop & update cursor
+                        removeItemInHand();
+                        keeperHand.pop().drop(tile);
+                        if (!keeperHand.isEmpty()) {
+                            setupItemInHand(keeperHand.peek());
+                        }
+                        setCursor();
+                    }
+                } else if (Main.isDebug()) {
                     // taggable -> "dig"
                     if (getWorldHandler().isTaggable((int) pos.x, (int) pos.y)) {
                         getWorldHandler().digTile((int) pos.x, (int) pos.y);
@@ -348,14 +413,28 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
 
     @Override
     public void onKeyEvent(KeyInputEvent evt) {
-        // FIXME use CTRL + ALT + C to activate cheats!
-        // TODO Disable in multi player!
-        if (evt.isPressed() && evt.getKeyCode() == KeyInput.KEY_F12) {
-            CheatState cheat = stateManager.getState(CheatState.class);
-            if (!cheat.isEnabled()) {
-                cheat.setEnabled(true);
+        if (evt.isPressed()) {
+            if (evt.getKeyCode() == KeyInput.KEY_F12) {
+                // FIXME use CTRL + ALT + C to activate cheats!
+                // TODO Disable in multi player!
+                CheatState cheat = stateManager.getState(CheatState.class);
+                if (!cheat.isEnabled()) {
+                    cheat.setEnabled(true);
+                }
+            } else if (evt.getKeyCode() == ConsoleState.KEY && Main.isDebug()) {
+                stateManager.getState(ConsoleState.class).setEnabled(true);
+            } else if (evt.getKeyCode() == (Integer) Settings.Setting.TOGGLE_PLAYER_INFORMATION.getDefaultValue()) {
+                Element stats = view.findElementById("statistics");
+                if (stats != null) {
+                    if (stats.isVisible()) {
+                        stats.hide();
+                    } else {
+                        stats.show();
+                    }
+                }
             }
         }
+
     }
 
     @Override
@@ -403,11 +482,18 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
     }
 
     private boolean isCursorOnGUI() {
-        // if mouse not in rectangle guiConstraint => true
-        return mousePosition.x <= guiConstraint.x
-                || mousePosition.x >= guiConstraint.x + guiConstraint.width
-                || app.getContext().getSettings().getHeight() - mousePosition.y <= guiConstraint.y
-                || app.getContext().getSettings().getHeight() - mousePosition.y >= guiConstraint.y + guiConstraint.height;
+        int height = app.getContext().getSettings().getHeight();
+
+        if (view.isVisible() && view.isMouseInsideElement((int) mousePosition.x, height - (int) mousePosition.y)) {
+            for (Element e : view.getChildren()) {
+                if (e.isVisible() && e.isMouseInsideElement((int) mousePosition.x, height - (int) mousePosition.y)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -447,6 +533,9 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
     }
 
     private boolean isInteractable() {
+        if (isOnGui) {
+            return false;
+        }
 
         // TODO: Now just creature control, but all interaction objects
         IInteractiveControl controller = getInteractiveObjectOnCursor();
@@ -538,16 +627,52 @@ public abstract class PlayerInteractionState extends AbstractPauseAwareState imp
     }
 
     protected void setCursor() {
-        if (app.getUserSettings().getSettingBoolean(Settings.Setting.USE_CURSORS)) {
+        keeperHandNode.setCullHint(Spatial.CullHint.Always);
+        if (Main.getUserSettings().getSettingBoolean(Settings.Setting.USE_CURSORS)) {
             if (isOnGui || isInteractable) {
                 inputManager.setMouseCursor(CursorFactory.getCursor(CursorFactory.CursorType.POINTER, assetManager));
             } else if (isTagging) {
                 inputManager.setMouseCursor(CursorFactory.getCursor(CursorFactory.CursorType.HOLD_PICKAXE_TAGGING, assetManager));
             } else if (isTaggable) {
                 inputManager.setMouseCursor(CursorFactory.getCursor(CursorFactory.CursorType.HOLD_PICKAXE, assetManager));
+            } else if (itemInHand != null) {
+
+                // Keeper hand item
+                inputManager.setMouseCursor(CursorFactory.getCursor(itemInHand.getInHandCursor(), assetManager));
+                keeperHandNode.setCullHint(Spatial.CullHint.Never);
             } else {
                 inputManager.setMouseCursor(CursorFactory.getCursor(CursorFactory.CursorType.IDLE, assetManager));
             }
+        } else if (itemInHand != null) {
+            keeperHandNode.setCullHint(Spatial.CullHint.Never);
+        }
+    }
+
+    private void setupItemInHand(IInteractiveControl interactiveControl) {
+
+        // Remove the old one
+        if (itemInHand != null) {
+            removeItemInHand();
+        }
+
+        // Set the item
+        itemInHand = interactiveControl;
+        if (itemInHand.getInHandMesh() != null) {
+
+            // Attach to GUI node and play the animation
+            itemInHand.getSpatial().setLocalTranslation(0, 0, 0);
+            itemInHand.getSpatial().setLocalRotation(Matrix3f.ZERO);
+            keeperHandNode.attachChild(itemInHand.getSpatial());
+            CreatureLoader.playAnimation(itemInHand.getSpatial(), itemInHand.getInHandMesh(), assetManager);
+        }
+    }
+
+    private void removeItemInHand() {
+        if (itemInHand != null && itemInHand.getInHandMesh() != null) {
+
+            // Remove from GUI node
+            itemInHand.getSpatial().removeFromParent();
+            itemInHand = null;
         }
     }
 

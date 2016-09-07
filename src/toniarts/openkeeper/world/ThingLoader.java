@@ -222,7 +222,12 @@ public class ThingLoader {
         return creatureControl;
     }
 
-    private void attachCreature(Spatial creature) {
+    /**
+     * Attachs a creature back to the creatures node
+     *
+     * @param creature the creature spatial
+     */
+    public void attachCreature(Spatial creature) {
         nodeCreatures.attachChild(creature);
     }
 
@@ -288,6 +293,17 @@ public class ThingLoader {
         }
         listeners.add(listener);
         creatureListeners.put(playerId, listeners);
+    }
+
+    /**
+     * Typically you should add objects through add object so that they are
+     * added to the global list, but for rooms etc. you can use the object
+     * loader directly
+     *
+     * @return the object loader
+     */
+    protected ObjectLoader getObjectLoader() {
+        return objectLoader;
     }
 
 }
