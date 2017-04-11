@@ -77,6 +77,7 @@ public class EngineTexturesFile implements Iterable<String> {
                 do {
                     String name = ConversionUtils.convertFileSeparators(ConversionUtils.readVaryingLengthStrings(rawDir, 1).get(0));
                     int offset = ConversionUtils.readUnsignedInteger(rawDir);
+                    final boolean alphaFlag = name.contains("#TRANS");
 
                     //Read the actual data from the DAT file from the offset specified by the DIR file
                     rawTextures.seek(offset);
@@ -88,7 +89,13 @@ public class EngineTexturesFile implements Iterable<String> {
                     entry.setSize(ConversionUtils.readUnsignedInteger(rawTextures) - 8); // - 8 since the size is from here now on
                     entry.setsResX(ConversionUtils.readUnsignedShort(rawTextures));
                     entry.setsResY(ConversionUtils.readUnsignedShort(rawTextures));
-                    entry.setAlphaFlag(ConversionUtils.readUnsignedInteger(rawTextures) >> 7 != 0);
+                    entry.setAlphaFlag(alphaFlag); //name contains transparency flag
+                    if(alphaFlag) {
+                        float alphaValue = Float.parseFloat("0." + name.substring(6,8)); //name contains transparency percentage
+                        entry.setAlphaValue(alphaValue);
+                        logger.info("Alpha Value: " + alphaValue);
+                    }
+                    //entry.setAlphaFlag(ConversionUtils.readUnsignedInteger(rawTextures) >> 7 != 0);
                     entry.setDataStartLocation(rawTextures.getFilePointer());
 
                     //Put the entry to the hash
