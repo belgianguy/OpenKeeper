@@ -618,7 +618,7 @@ public class KmfModelLoader implements AssetLoader {
      * @param material material to modify
      * @param engineTextureFile EngineTexturesFile entry to extract some info
      */
-    private void setMaterialFlags(Material material, EngineTexturesFile engineTextureFile, String texture, toniarts.openkeeper.tools.convert.kmf.Material source) {
+    private void setMaterialFlags(Material material, EngineTexturesFile engineTextureFile, String texture, boolean useAlpha) {
         material.setReceivesShadows(true);
 
         // If we have an instance of engine texture file, check the alpha
@@ -626,14 +626,7 @@ public class KmfModelLoader implements AssetLoader {
             String textureEntry = texture.concat("MM0");
             EngineTextureEntry engineTextureEntry = engineTextureFile.getEntry(textureEntry);
 
-            boolean forceAlpha = source.getFlag().contains(toniarts.openkeeper.tools.convert.kmf.Material.MaterialFlag.UNKNOWN1);
-
-
-            if (engineTextureEntry != null) {
-                engineTextureEntry.setAlphaFlag(engineTextureEntry.isAlphaFlag() || forceAlpha);
-            }
-
-            if (engineTextureEntry != null && engineTextureEntry.isAlphaFlag()) {
+            if (useAlpha) {
                 material.setTransparent(true);
 
                 // There are some hints on the rendering on the texture names (ie. #add#FalloffMM0)
@@ -668,6 +661,7 @@ public class KmfModelLoader implements AssetLoader {
             // Get the texture, the first one
             // There is a list of possible alternative textures
             String texture = mat.getTextures().get(0);
+            boolean useAlpha = mat.getFlag().contains(toniarts.openkeeper.tools.convert.kmf.Material.MaterialFlag.UNKNOWN1);
             if (textureFixes.containsKey(texture)) {
 
                 //Fix the texture entry
@@ -682,7 +676,7 @@ public class KmfModelLoader implements AssetLoader {
                 materialKey = materialCache.get(mat);
                 if (materialKey != null) {
                     material = assetInfo.getManager().loadMaterial(materialKey);
-                    setMaterialFlags(material, engineTextureFile, texture, mat);
+                    setMaterialFlags(material, engineTextureFile, texture, useAlpha);
                     List<Material> materialList = new ArrayList<>(mat.getTextures().size());
                     materialList.add(material);
 
@@ -734,13 +728,15 @@ public class KmfModelLoader implements AssetLoader {
             material.setFloat("Shininess", 128 * mat.getBrightness()); // Use the brightness as shininess... Experimental
 
             // Set some flags
-            setMaterialFlags(material, engineTextureFile, texture, mat);
+
+            setMaterialFlags(material, engineTextureFile, texture, useAlpha);
 
             // If we have an instance of engine texture file, check the alpha
             if (engineTextureFile != null) {
                 String textureEntry = texture.concat("MM0");
                 EngineTextureEntry engineTextureEntry = engineTextureFile.getEntry(textureEntry);
-                if (engineTextureEntry != null && engineTextureEntry.isAlphaFlag()) {
+
+                if (engineTextureEntry != null && engineTextureEntry.isAlphaFlag() && useAlpha) {
                     material.setFloat("AlphaDiscardThreshold", 0.1f);
                     material.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
 

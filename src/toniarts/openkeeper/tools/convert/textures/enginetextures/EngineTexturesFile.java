@@ -90,12 +90,7 @@ public class EngineTexturesFile implements Iterable<String> {
                     entry.setsResX(ConversionUtils.readUnsignedShort(rawTextures));
                     entry.setsResY(ConversionUtils.readUnsignedShort(rawTextures));
                     entry.setAlphaFlag(alphaFlag); //name contains transparency flag
-                    if(alphaFlag) {
-                        float alphaValue = Float.parseFloat("0." + name.substring(6,8)); //name contains transparency percentage
-                        entry.setAlphaValue(alphaValue);
-                        logger.info("Alpha Value: " + alphaValue);
-                    }
-                    //entry.setAlphaFlag(ConversionUtils.readUnsignedInteger(rawTextures) >> 7 != 0);
+                    entry.setAlphaFlag(ConversionUtils.readUnsignedInteger(rawTextures) >> 7 != 0);
                     entry.setDataStartLocation(rawTextures.getFilePointer());
 
                     //Put the entry to the hash

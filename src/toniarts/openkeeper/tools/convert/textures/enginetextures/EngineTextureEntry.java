@@ -30,7 +30,6 @@ public class EngineTextureEntry {
     private int sResX;
     private int sResY;
     private boolean alphaFlag;
-    private float alphaValue;
     private long dataStartLocation;
 
     public int getResX() {
@@ -77,16 +76,8 @@ public class EngineTextureEntry {
         return alphaFlag;
     }
 
-    public void setAlphaFlag(boolean alphaFlag) {
+    protected void setAlphaFlag(boolean alphaFlag) {
         this.alphaFlag = alphaFlag;
-    }
-
-    public float getAlphaValue() {
-        return alphaValue;
-    }
-
-    public void setAlphaValue(float alphaValue) {
-        this.alphaValue = alphaValue;
     }
 
     protected long getDataStartLocation() {
