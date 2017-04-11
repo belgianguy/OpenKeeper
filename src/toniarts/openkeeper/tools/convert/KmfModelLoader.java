@@ -626,15 +626,7 @@ public class KmfModelLoader implements AssetLoader {
             String textureEntry = texture.concat("MM0");
             EngineTextureEntry engineTextureEntry = engineTextureFile.getEntry(textureEntry);
 
-            boolean forceAlpha = false;
-            if(!source.getFlag().isEmpty()) {
-                for(toniarts.openkeeper.tools.convert.kmf.Material.MaterialFlag flag : source.getFlag()) {
-                    if("UNKNOWN1".equals(flag.name())) {
-                        forceAlpha = true;
-                        break;
-                    }
-                }
-            }
+            boolean forceAlpha = source.getFlag().contains(toniarts.openkeeper.tools.convert.kmf.Material.MaterialFlag.UNKNOWN1);
 
 
             if (engineTextureEntry != null) {
