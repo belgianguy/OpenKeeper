@@ -49,7 +49,7 @@ public class WadExtractor {
         String destination = PathUtils.fixFilePath(args[0]);
 
         //Extract the meshes
-        WadFile wad = new WadFile(new File(dataFolder + "Meshes.WAD"));
-        wad.extractFileData(destination.concat("meshes"));
+        WadFile wad = new WadFile(new File(dataFolder + "FrontEnd.WAD"));
+        wad.extractFileData(destination.concat("frontend"));
     }
 }
