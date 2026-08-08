@@ -9,11 +9,9 @@ import com.jme3.renderer.Camera;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Spatial.CullHint;
-import com.jme3.scene.debug.WireBox;
 import toniarts.openkeeper.utils.Point;
 import toniarts.openkeeper.Main;
 import toniarts.openkeeper.utils.WorldUtils;
-import toniarts.openkeeper.view.map.MapViewController;
 
 /**
  * Class that contains the SelectionLogic of the Selection-Helper-Box in the
@@ -42,7 +40,7 @@ public abstract class SelectionHandler {
 
     /* Visuals for Selection */
     private Geometry wireBoxGeo;
-    private WireBox wireBox;
+    private TerrainSelectionOutline wireBox;
     private Material matWireBox;
     /* The selected Area */
     private final SelectionArea selectionArea;
@@ -158,16 +156,9 @@ public abstract class SelectionHandler {
 
     public void updateSelectionBox() {
         if (isVisible()) {
-            float dx = selectionArea.getDeltaX();
-            float dy = selectionArea.getDeltaY();
-            float delta = 0.01f;
-
-            Vector2f position = selectionArea.getCenter();
-            wireBoxGeo.setLocalTranslation(position.x, WorldUtils.FLOOR_HEIGHT, position.y);
-
-            wireBox.updatePositions(WorldUtils.TILE_WIDTH / 2 * dx + delta,
-                    WorldUtils.FLOOR_HEIGHT + delta,
-                    WorldUtils.TILE_WIDTH / 2 * dy + delta);
+            wireBoxGeo.setLocalTranslation(Vector3f.ZERO);
+            wireBox.update(WorldUtils.vectorToPoint(selectionArea.getStart()),
+                    WorldUtils.vectorToPoint(selectionArea.getEnd()));
 
             // Selection color indicator
             ColorIndicator newSelectionColor = getColorIndicator();
@@ -188,8 +179,7 @@ public abstract class SelectionHandler {
         matWireBox.setColor("Color", selectionColor.getColor());
         matWireBox.getAdditionalRenderState().setLineWidth(6); // TODO: GL_INVALID_VALUE on intel driver
 
-        this.wireBox = new WireBox(WorldUtils.TILE_WIDTH, WorldUtils.TILE_WIDTH, WorldUtils.TILE_WIDTH);
-        this.wireBox.setDynamic();
+        this.wireBox = new TerrainSelectionOutline();
 
         this.wireBoxGeo = new Geometry("wireBox", wireBox);
         this.wireBoxGeo.setMaterial(matWireBox);

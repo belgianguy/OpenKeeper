@@ -72,6 +72,7 @@ public abstract class MapViewController implements ILoader<KwdFile> {
     private Node map;
     private final AssetManager assetManager;
     private final IMapInformation mapClientService;
+    private final TerrainMeshDeformer terrainMeshDeformer;
     private Node roomsNode;
     private final short playerId;
     private final Set<Point> flashedTiles = new HashSet<>();
@@ -88,6 +89,7 @@ public abstract class MapViewController implements ILoader<KwdFile> {
         this.assetManager = assetManager;
         this.mapClientService = mapClientService;
         this.playerId = playerId;
+        this.terrainMeshDeformer = new TerrainMeshDeformer();
     }
 
     @Override
@@ -125,10 +127,11 @@ public abstract class MapViewController implements ILoader<KwdFile> {
 
         // Batch the terrain pages
         for (Node page : pages) {
-            ((BatchNode) page.getChild(FLOOR_INDEX)).batch();
-            ((BatchNode) page.getChild(WALL_INDEX)).batch();
-            ((BatchNode) page.getChild(TOP_INDEX)).batch();
+            batchTerrain((BatchNode) page.getChild(FLOOR_INDEX));
+            batchTerrain((BatchNode) page.getChild(WALL_INDEX));
+            batchTerrain((BatchNode) page.getChild(TOP_INDEX));
         }
+        logger.log(Level.INFO, "Terrain cage deformation: {0}", terrainMeshDeformer.summary());
         map.attachChild(terrain);
 
         // Create the water
@@ -220,8 +223,12 @@ public abstract class MapViewController implements ILoader<KwdFile> {
 
         // Batch
         for (BatchNode batchNode : nodesNeedBatching) {
-            batchNode.batch();
+            batchTerrain(batchNode);
         }
+    }
+
+    private void batchTerrain(BatchNode batchNode) {
+        batchNode.batch();
     }
 
     /**
@@ -395,9 +402,10 @@ public abstract class MapViewController implements ILoader<KwdFile> {
                 List<String> textures = spatial.getUserData(KmfModelLoader.MATERIAL_ALTERNATIVE_TEXTURES);
                 if (textures != null) {
 
-                    // The principle is bit wrong, the random texture is tied to the tile, and not material etc.
-                    // But it is probably just the tops of few tiles, so...
-                    int tex = tile.getRandomTextureIndex();
+                    // ROCK TOP.kmf contains 2 texture alternatives while Rock declares 3 textureFrames
+                    // in Terrain.kwd. Wrap the third weighted slot to the default texture instead of
+                    // trying to load the nonexistent T_Rock_Top2T_Rock_top2_2.j3m material.
+                    int tex = Math.floorMod(tile.getRandomTextureIndex(), textures.size());
                     if (tex != 0) { // 0 is the default anyway
                         Geometry g = (Geometry) spatial;
                         Material m = g.getMaterial();
@@ -413,7 +421,6 @@ public abstract class MapViewController implements ILoader<KwdFile> {
                                 g.setMaterial(newMaterial);
                             } catch (Exception e) {
 
-                                // FIXME: Rock top fails, we may have a problem in the material naming
                                 logger.log(Level.WARNING, "Failed to load a random texture to terrain id " + tile.getTerrainId() + ", texture index " + tex + "!", e);
                             }
                         }
@@ -590,7 +597,9 @@ public abstract class MapViewController implements ILoader<KwdFile> {
         if (terrain.getFlags().contains(Terrain.TerrainFlag.RANDOM_TEXTURE)) {
             setRandomTexture(spatial, tile);
         }
-
+        if (terrain.getFlags().contains(Terrain.TerrainFlag.SOLID)) {
+            terrainMeshDeformer.deform(spatial, p, false);
+        }
         Node topTileNode;
         if (terrain.getFlags().contains(Terrain.TerrainFlag.SOLID)) {
             topTileNode = getTileNode(p, (Node) pageNode.getChild(TOP_INDEX));
@@ -611,6 +620,7 @@ public abstract class MapViewController implements ILoader<KwdFile> {
             Spatial wall = getWallSpatial(tile, direction);
             if (wall != null) {
                 wall.rotate(0, direction.getAngle(), 0);
+                terrainMeshDeformer.deform(wall, p, true);
                 sideTileNode.attachChild(wall);
             }
         }
