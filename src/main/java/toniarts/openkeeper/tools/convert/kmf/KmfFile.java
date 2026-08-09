@@ -206,11 +206,11 @@ public final class KmfFile {
         m.setTextures(rawKmf.readVaryingLengthStrings(texturesCount));
 
         m.setFlag(rawKmf.readIntegerAsFlag(Material.MaterialFlag.class));
-        m.setBrightness(rawKmf.readFloat());
-        m.setShininess(rawKmf.readFloat());
+        m.setEmissive(rawKmf.readFloat());
+        m.setSpecular(rawKmf.readFloat());
 
         // Environment map
-        m.setEnvironmentMappingTexture(rawKmf.readVaryingLengthStrings(1).get(0));
+        m.setEnvironmentMapTexture(rawKmf.readVaryingLengthStrings(1).get(0));
 
         return m;
     }

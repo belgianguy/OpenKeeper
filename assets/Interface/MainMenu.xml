@@ -380,6 +380,10 @@
                         <control width="250px" name="dropDown" id="openGl" />
                     </panel>
                     <panel childLayout="horizontal" padding="10px">
+                        <control name="checkbox" id="bloom" />
+                        <text style="menuTextSmall" text=" Bloom" />
+                    </panel>
+                    <panel childLayout="horizontal" padding="10px">
                         <control name="checkbox" id="ssao" />
                         <text style="menuTextSmall" text=" SSAO" />
                     </panel>

@@ -112,6 +112,10 @@ public final class Water {
             TextureKey textureKey = new TextureKey(AssetUtils.getCanonicalAssetKey(AssetsConverter.TEXTURES_FOLDER.concat("/").concat(entityInstances.get(0).getEntity().getTopResource().getName()).concat(".png")), false);
             Texture tex = assetManager.loadTexture(textureKey);
             mat.setTexture("DiffuseMap", tex);
+
+            // Feed the lava texture into object-only bloom. Its bright cracks glow,
+            // while the dark crust and unrelated bright scene objects stay sharp.
+            mat.setTexture("GlowMap", tex);
             MapViewController.setTerrainMaterialLighting(mat, entityInstances.get(0).getEntity());
         }
 

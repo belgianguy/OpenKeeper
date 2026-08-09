@@ -100,6 +100,7 @@ public final class KmfModelLoader implements AssetLoader {
      */
     public static final String MATERIAL_ALTERNATIVE_TEXTURES = "AlternativeTextures";
     public static final String FRAME_FACTOR_FUNCTION = "FrameFactorFunction";
+    private static final String KMF_MATERIAL_DEFINITION = "MatDefs/KmfLighting.j3md";
     /* Already saved materials are stored here */
     private static final Map<toniarts.openkeeper.tools.convert.kmf.Material, String> materialCache = new HashMap<>();
     private static final TextureSorter TEXTURE_SORTER = new TextureSorter();
@@ -564,12 +565,12 @@ public final class KmfModelLoader implements AssetLoader {
     }
 
     /**
-     * Set some flags on the material that do not get saved
+     * Applies the KMF material flags and scalar properties.
      *
      * @param material material to modify
      * @param kmfMaterial the KMF material entry
      */
-    private void setMaterialFlags(Material material, toniarts.openkeeper.tools.convert.kmf.Material kmfMaterial) {
+    static void setMaterialFlags(Material material, toniarts.openkeeper.tools.convert.kmf.Material kmfMaterial) {
 
         // Read the flags & stuff
         if (kmfMaterial.getFlag().contains(MaterialFlag.HAS_ALPHA)) {
@@ -583,12 +584,41 @@ public final class KmfModelLoader implements AssetLoader {
             material.getAdditionalRenderState().setDepthWrite(false);
             material.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.AlphaAdditive);
         }
+        if (kmfMaterial.getFlag().contains(MaterialFlag.TRANSLUCENT)) {
+            material.setTransparent(true);
+            material.getAdditionalRenderState().setDepthWrite(false);
+            material.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+        }
 
         if (kmfMaterial.getFlag().contains(MaterialFlag.DOUBLE_SIDED))
             material.getAdditionalRenderState().setFaceCullMode(FaceCullMode.Off);
 
-        // Shadows thing is just a guess, like, they seem to be small light sources
-        material.setReceivesShadows(!kmfMaterial.getFlag().contains(MaterialFlag.ALPHA_ADDITIVE));
+        if (kmfMaterial.getFlag().contains(MaterialFlag.HAS_EMISSIVE)) {
+            float emissive = kmfMaterial.getEmissive();
+            ColorRGBA emissiveColor = new ColorRGBA(emissive, emissive, emissive, 1f);
+            material.setColor("Emissive", emissiveColor);
+            material.setColor("GlowColor", emissiveColor);
+        }
+
+        if (kmfMaterial.getFlag().contains(MaterialFlag.INVISIBLE)) {
+            material.setTransparent(true);
+            material.getAdditionalRenderState().setColorWrite(false);
+            material.getAdditionalRenderState().setDepthWrite(false);
+        }
+
+        boolean receivesShadows = !kmfMaterial.getFlag().contains(MaterialFlag.ALPHA_ADDITIVE)
+                && !kmfMaterial.getFlag().contains(MaterialFlag.INVISIBLE);
+        material.setReceivesShadows(receivesShadows);
+    }
+
+    private void setEnvironmentMap(Material material, toniarts.openkeeper.tools.convert.kmf.Material kmfMaterial, AssetInfo assetInfo) {
+        if (!kmfMaterial.getFlag().contains(MaterialFlag.HAS_SPECULAR)) {
+            return;
+        }
+
+        Texture environmentMap = loadTexture(kmfMaterial.getEnvironmentMapTexture(), assetInfo);
+        material.setTexture("EnvMap", environmentMap);
+        material.setVector3("FresnelParams", new Vector3f(kmfMaterial.getSpecular(), 0f, 1f));
     }
 
     /**
@@ -668,20 +698,19 @@ public final class KmfModelLoader implements AssetLoader {
             }
 
             // Create the material
-            if (material == null) {
-                material = new Material(assetInfo.getManager(), "Common/MatDefs/Light/Lighting.j3md");
+            if (material == null || !KMF_MATERIAL_DEFINITION.equals(material.getMaterialDef().getAssetName())) {
+                material = new Material(assetInfo.getManager(), KMF_MATERIAL_DEFINITION);
                 material.setName(mat.getName());
             }
 
             //Load up the texture and create the material
             Texture tex = loadTexture(texture, assetInfo);
             material.setTexture("DiffuseMap", tex);
-            material.setColor("Specular", ColorRGBA.Orange); // Dungeons are lit only with fire...? Experimental
-            material.setColor("Diffuse", ColorRGBA.White); // Experimental
-            material.setFloat("Shininess", mat.getShininess());
+            material.setColor("Diffuse", ColorRGBA.White);
 
             // Set some flags
             setMaterialFlags(material, mat);
+            setEnvironmentMap(material, mat, assetInfo);
 
             // Add material to list and create the possible alternatives
             List<Material> materialList = new ArrayList<>(mat.getTextures().size());

@@ -31,6 +31,7 @@ import com.jme3.light.AmbientLight;
 import com.jme3.math.ColorRGBA;
 import com.jme3.niftygui.NiftyJmeDisplay;
 import com.jme3.post.FilterPostProcessor;
+import com.jme3.post.filters.BloomFilter;
 import com.jme3.post.ssao.SSAOFilter;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.opengl.GLRenderer;
@@ -577,14 +578,23 @@ public final class Main extends SimpleApplication {
         // Clear the old ones
         viewPort.clearProcessors();
 
-        // Add SSAO
-        if (Settings.getInstance().getBoolean(Settings.Setting.SSAO)) {
+        boolean bloomEnabled = Settings.getInstance().getBoolean(Settings.Setting.BLOOM);
+        boolean ssaoEnabled = Settings.getInstance().getBoolean(Settings.Setting.SSAO);
+        if (bloomEnabled || ssaoEnabled) {
             FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
-            SSAOFilter ssaoFilter = new SSAOFilter(Settings.getInstance().getFloat(Settings.Setting.SSAO_SAMPLE_RADIUS),
-                    Settings.getInstance().getFloat(Settings.Setting.SSAO_INTENSITY),
-                    Settings.getInstance().getFloat(Settings.Setting.SSAO_SCALE),
-                    Settings.getInstance().getFloat(Settings.Setting.SSAO_BIAS));
-            fpp.addFilter(ssaoFilter);
+
+            if (ssaoEnabled) {
+                SSAOFilter ssaoFilter = new SSAOFilter(Settings.getInstance().getFloat(Settings.Setting.SSAO_SAMPLE_RADIUS),
+                        Settings.getInstance().getFloat(Settings.Setting.SSAO_INTENSITY),
+                        Settings.getInstance().getFloat(Settings.Setting.SSAO_SCALE),
+                        Settings.getInstance().getFloat(Settings.Setting.SSAO_BIAS));
+                fpp.addFilter(ssaoFilter);
+            }
+            // Object-only bloom leaves ordinary bright terrain and the GUI untouched.
+            // Apply it last so ambient occlusion does not darken the glow.
+            if (bloomEnabled) {
+                fpp.addFilter(new BloomFilter(BloomFilter.GlowMode.Objects));
+            }
             viewPort.addProcessor(fpp);
         }
     }

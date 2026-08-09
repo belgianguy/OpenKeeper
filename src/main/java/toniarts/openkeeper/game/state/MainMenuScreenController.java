@@ -270,6 +270,7 @@ public final class MainMenuScreenController implements IMainMenuScreenController
         DropDown ogl = screen.findNiftyControl("openGl", DropDown.class);
         DropDown aa = screen.findNiftyControl("antialiasing", DropDown.class);
         DropDown af = screen.findNiftyControl("anisotropicFiltering", DropDown.class);
+        CheckBox bloom = screen.findNiftyControl("bloom", CheckBox.class);
         CheckBox ssao = screen.findNiftyControl("ssao", CheckBox.class);
         DisplayMode mdm = (DisplayMode) res.getSelection();
 
@@ -283,6 +284,7 @@ public final class MainMenuScreenController implements IMainMenuScreenController
         settings.getAppSettings().setRenderer((String) ogl.getSelection());
         settings.getAppSettings().setSamples((Integer) aa.getSelection());
         settings.setSetting(Settings.Setting.ANISOTROPY, af.getSelection());
+        settings.setSetting(Settings.Setting.BLOOM, bloom.isChecked());
         settings.setSetting(Settings.Setting.SSAO, ssao.isChecked());
 
         // This fails and crashes on invalid settings
@@ -791,7 +793,9 @@ public final class MainMenuScreenController implements IMainMenuScreenController
         ogl.addAllItems(Settings.OPENGL);
         ogl.selectItem(settings.getRenderer());
 
-        // SSAO
+        // Post-processing
+        CheckBox bloom = screen.findNiftyControl("bloom", CheckBox.class);
+        bloom.setChecked(Main.getUserSettings().getBoolean(Settings.Setting.BLOOM));
         CheckBox ssao = screen.findNiftyControl("ssao", CheckBox.class);
         ssao.setChecked(Main.getUserSettings().getBoolean(Settings.Setting.SSAO));
     }

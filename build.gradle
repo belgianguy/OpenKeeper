@@ -79,8 +79,47 @@ dependencies {
     implementation "com.simsilica:sio2:1.8.0"
     implementation "com.simsilica:sim-ethereal:1.8.0"
 
+    testImplementation platform("org.junit:junit-bom:5.13.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
     // Assets sub-project
     runtimeOnly project(':assets')
+}
+
+test {
+    useJUnitPlatform()
+    if (System.getProperty("openkeeper.dk2.root") != null) {
+        systemProperty "openkeeper.dk2.root", System.getProperty("openkeeper.dk2.root")
+    }
+}
+
+tasks.register("generateMaterialShowcaseMap", JavaExec) {
+    group = "verification"
+    description = "Generate MaterialShowcase in the configured Dungeon Keeper 2 editor maps folder"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "toniarts.openkeeper.tools.convert.map.MaterialShowcaseMapGenerator"
+    def dk2Root = providers.systemProperty("openkeeper.dk2.root")
+    doFirst {
+        if (!dk2Root.isPresent()) {
+            throw new GradleException("Pass -Dopenkeeper.dk2.root=/path/to/Dungeon\\ Keeper\\ 2")
+        }
+        args dk2Root.get()
+    }
+}
+
+tasks.register("validateMaterialShowcaseMap", JavaExec) {
+    group = "verification"
+    description = "Parse and validate MaterialShowcase from the configured Dungeon Keeper 2 folder"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "toniarts.openkeeper.tools.convert.map.MaterialShowcaseMapGenerator"
+    def dk2Root = providers.systemProperty("openkeeper.dk2.root")
+    doFirst {
+        if (!dk2Root.isPresent()) {
+            throw new GradleException("Pass -Dopenkeeper.dk2.root=/path/to/Dungeon\\ Keeper\\ 2")
+        }
+        args dk2Root.get(), "--validate"
+    }
 }
 
 java {
