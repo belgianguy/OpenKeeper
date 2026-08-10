@@ -279,7 +279,8 @@ public abstract class KeeperHandState extends AbstractAppState {
                     break;
                 }
                 case OBJECT: {
-                    viewControl = new ObjectViewControl(e.getId(), entityData, kwdFile.getObject(inHand.id), new ObjectViewState(), assetManager, null);
+                    viewControl = new ObjectViewControl(e.getId(), entityData, kwdFile.getObject(inHand.id), new ObjectViewState(), assetManager, null,
+                            kwdFile.getGameLevel().getTicksPerSec());
                     break;
                 }
                 default:

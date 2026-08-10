@@ -345,7 +345,8 @@ public final class GameClientState extends AbstractPauseAwareState {
                 };
                 mapInformation = playerMapViewState.getMapInformation();
                 textParser = new TextParserService(mapInformation, playerMapViewState.getRoomsInformation());
-                playerModelViewState = new PlayerEntityViewState(kwdFile, app.getAssetManager(), gameClientService.getEntityData(), playerId, textParser, app.getRootNode());
+                playerModelViewState = new PlayerEntityViewState(kwdFile, app.getAssetManager(), gameClientService.getEntityData(), playerId,
+                        textParser, app.getRootNode(), playerMapViewState.getEffectManager());
 
                 // Attach the states
                 stateManager.attach(playerState);

@@ -448,5 +448,6 @@ public class VisualEffect {
         effects.clear();
         effectElements.clear();
         infinite = false;
+        effectNode.removeFromParent();
     }
 }

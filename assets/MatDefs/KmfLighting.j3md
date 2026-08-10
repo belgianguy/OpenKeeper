@@ -84,6 +84,9 @@ MaterialDef KMF Lighting {
         // Env Map for reflection
         Texture2D EnvMap
 
+        // Select the sampler type independently from enabling the environment map.
+        Boolean EnvMapAsSphereMap
+
 
         //shadows
          Int FilterMode
@@ -140,7 +143,7 @@ MaterialDef KMF Lighting {
     Technique {
         LightMode SinglePass
 
-        VertexShader   GLSL310 GLSL300 GLSL150 GLSL100:   Common/MatDefs/Light/SPLighting.vert
+        VertexShader   GLSL310 GLSL300 GLSL150 GLSL100: Shaders/KmfSPLighting.vert
         FragmentShader GLSL310 GLSL300 GLSL150 GLSL100: Shaders/KmfSPLighting.frag
 
         WorldParameters {
@@ -171,57 +174,7 @@ MaterialDef KMF Lighting {
             DISCARD_ALPHA : AlphaDiscardThreshold
             EMISSIVE : Emissive
             USE_REFLECTION : EnvMap
-            SPHERE_MAP : EnvMap  
-            NUM_BONES : NumberOfBones                        
-            INSTANCING : UseInstancing
-            NUM_MORPH_TARGETS: NumberOfMorphTargets
-            NUM_TARGETS_BUFFERS: NumberOfTargetsBuffers
-            NORMAL_TYPE: NormalType
-
-            // fog - jayfella
-            USE_FOG : UseFog
-            FOG_LINEAR : LinearFog
-            FOG_EXP : ExpFog
-            FOG_EXPSQ : ExpSqFog
-        }
-    }
-
-    Technique {
-
-        LightMode MultiPass
-
-        VertexShader   GLSL310 GLSL300 GLSL150 GLSL100 :   Common/MatDefs/Light/Lighting.vert
-        FragmentShader GLSL310 GLSL300 GLSL150 GLSL100: Shaders/KmfLighting.frag
-
-        WorldParameters {
-            WorldViewProjectionMatrix
-            NormalMatrix
-            WorldViewMatrix
-            ViewMatrix
-            CameraPosition
-            WorldMatrix
-            ViewProjectionMatrix            
-        }
-
-        Defines {
-            BOUND_DRAW_BUFFER: BoundDrawBuffer
-            VERTEX_COLOR : UseVertexColor
-            VERTEX_LIGHTING : VertexLighting            
-            MATERIAL_COLORS : UseMaterialColors
-            DIFFUSEMAP : DiffuseMap
-            NORMALMAP : NormalMap
-            SPECULARMAP : SpecularMap
-            PARALLAXMAP : ParallaxMap
-            NORMALMAP_PARALLAX : PackedNormalParallax
-            STEEP_PARALLAX : SteepParallax
-            ALPHAMAP : AlphaMap
-            COLORRAMP : ColorRamp
-            LIGHTMAP : LightMap
-            SEPARATE_TEXCOORD : SeparateTexCoord
-            DISCARD_ALPHA : AlphaDiscardThreshold
-            EMISSIVE : Emissive
-            USE_REFLECTION : EnvMap
-            SPHERE_MAP : EnvMap  
+            SPHERE_MAP : EnvMapAsSphereMap
             NUM_BONES : NumberOfBones                        
             INSTANCING : UseInstancing
             NUM_MORPH_TARGETS: NumberOfMorphTargets

@@ -171,6 +171,10 @@ public abstract class PlayerMapViewState extends AbstractAppState implements Map
         return assetManager;
     }
 
+    public EffectManagerState getEffectManager() {
+        return effectManager;
+    }
+
     /**
      * If you want to monitor the map loading progress, use this method
      *

@@ -37,6 +37,7 @@ import toniarts.openkeeper.game.component.Position;
 import toniarts.openkeeper.game.component.TrapViewState;
 import toniarts.openkeeper.tools.convert.map.Creature;
 import toniarts.openkeeper.tools.convert.map.Door;
+import toniarts.openkeeper.tools.convert.map.GameObject;
 import toniarts.openkeeper.tools.convert.map.KwdFile;
 import toniarts.openkeeper.tools.convert.map.Trap;
 import toniarts.openkeeper.view.control.CreatureFlowerControl;
@@ -49,6 +50,8 @@ import toniarts.openkeeper.view.control.IUnitFlowerControl;
 import toniarts.openkeeper.view.control.ObjectViewControl;
 import toniarts.openkeeper.view.control.TrapFlowerControl;
 import toniarts.openkeeper.view.control.TrapViewControl;
+import toniarts.openkeeper.view.effect.EffectManagerState;
+import toniarts.openkeeper.view.effect.VisualEffect;
 import toniarts.openkeeper.view.loader.CreatureLoader;
 import toniarts.openkeeper.view.loader.DoorLoader;
 import toniarts.openkeeper.view.loader.ILoader;
@@ -71,6 +74,7 @@ public class PlayerEntityViewState extends AbstractAppState {
     private final EntityData entityData;
     private final short playerId;
     private final Node rootNode;
+    private final EffectManagerState effectManager;
 
     private final TextParser textParser;
     private final Node root;
@@ -90,8 +94,15 @@ public class PlayerEntityViewState extends AbstractAppState {
 
     private final Map<EntityId, IUnitFlowerControl> flowerControls = new HashMap<>();
     private final Map<EntityId, IEntityViewControl> entityViewControls = new HashMap<>();
+    private final Map<EntityId, VisualEffect> objectEffects = new HashMap<>();
 
-    public PlayerEntityViewState(KwdFile kwdFile, AssetManager assetManager, EntityData entityData, short playerId, TextParser textParser, Node rootNode) {
+    public PlayerEntityViewState(KwdFile kwdFile, AssetManager assetManager, EntityData entityData, short playerId,
+            TextParser textParser, Node rootNode) {
+        this(kwdFile, assetManager, entityData, playerId, textParser, rootNode, null);
+    }
+
+    public PlayerEntityViewState(KwdFile kwdFile, AssetManager assetManager, EntityData entityData, short playerId,
+            TextParser textParser, Node rootNode, EffectManagerState effectManager) {
         super(Short.toString(playerId));
         this.kwdFile = kwdFile;
         this.assetManager = assetManager;
@@ -99,6 +110,7 @@ public class PlayerEntityViewState extends AbstractAppState {
         this.playerId = playerId;
         this.textParser = textParser;
         this.rootNode = rootNode;
+        this.effectManager = effectManager;
 
         // Init the loaders
         objectLoader = new ObjectLoader(kwdFile);
@@ -156,6 +168,11 @@ public class PlayerEntityViewState extends AbstractAppState {
         doorModelContainer.stop();
         trapModelContainer.stop();
 
+        if (effectManager != null) {
+            objectEffects.values().forEach(effectManager::remove);
+            objectEffects.clear();
+        }
+
         // Detach entities
         rootNode.detachChild(root);
 
@@ -192,8 +209,18 @@ public class PlayerEntityViewState extends AbstractAppState {
         if (objectViewState != null) {
             result = objectLoader.load(assetManager, objectViewState);
             if (result != null) {
-                EntityViewControl control = new ObjectViewControl(e.getId(), entityData, kwdFile.getObject(objectViewState.objectId), objectViewState, assetManager, textParser != null ? textParser.getObjectTextParser() : null);
+                GameObject gameObject = kwdFile.getObject(objectViewState.objectId);
+                EntityViewControl control = new ObjectViewControl(e.getId(), entityData, gameObject, objectViewState,
+                        assetManager, textParser != null ? textParser.getObjectTextParser() : null,
+                        kwdFile.getGameLevel().getTicksPerSec());
                 result.addControl(control);
+
+                if (gameObject.getFlags().contains(GameObject.ObjectFlag.OBJECT_TYPE_LEVEL_GEM)
+                        && gameObject.getMiscEffectId() != 0 && effectManager != null
+                        && result instanceof Node objectNode) {
+                    objectEffects.put(e.getId(), effectManager.load(objectNode, null,
+                            gameObject.getMiscEffectId(), true));
+                }
 
                 result.setCullHint(objectViewState.visible ? Spatial.CullHint.Inherit : Spatial.CullHint.Always);
 
@@ -333,6 +360,10 @@ public class PlayerEntityViewState extends AbstractAppState {
 
     private void removeModel(Spatial spatial, Entity e) {
         spatial.removeFromParent();
+
+        if (effectManager != null) {
+            effectManager.remove(objectEffects.remove(e.getId()));
+        }
 
         IEntityViewControl entityViewControl = entityViewControls.remove(e.getId());
         if (entityViewControl != null) {

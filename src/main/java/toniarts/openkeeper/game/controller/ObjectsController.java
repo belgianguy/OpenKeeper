@@ -259,6 +259,15 @@ public final class ObjectsController implements IObjectsController {
     }
 
     @Override
+    public EntityId addPortalGem(short ownerId, Vector3f pos) {
+        GameObject levelGem = kwdFile.getLevelGem();
+        if (levelGem == null) {
+            throw new IllegalStateException("The level does not define a Portal Gem object");
+        }
+        return loadObject(levelGem.getObjectId(), ownerId, pos.clone(), 0);
+    }
+
+    @Override
     public EntityId addRoomSpellBook(short ownerId, int x, int y, ResearchableEntity researchableEntity) {
         return loadObject(OBJECT_SPELL_BOOK_ID, ownerId, x, y, null, researchableEntity.getResearchableType(), researchableEntity.getId());
     }
@@ -341,6 +350,9 @@ public final class ObjectsController implements IObjectsController {
         }
         if (obj.getFlags().contains(GameObject.ObjectFlag.OBJECT_TYPE_FOOD)) {
             return AbstractRoomController.ObjectType.FOOD;
+        }
+        if (obj.getFlags().contains(GameObject.ObjectFlag.OBJECT_TYPE_LEVEL_GEM)) {
+            return AbstractRoomController.ObjectType.PORTAL_GEM;
         }
 
         return null;

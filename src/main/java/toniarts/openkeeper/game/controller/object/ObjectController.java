@@ -66,7 +66,9 @@ public final class ObjectController extends EntityController implements IObjectC
 
     @Override
     public boolean isHaulable() {
-        return entityData.getComponent(entityId, Placeable.class) != null && getType() != AbstractRoomController.ObjectType.GOLD;
+        return entityData.getComponent(entityId, Placeable.class) != null
+                && getType() != AbstractRoomController.ObjectType.GOLD
+                && getType() != AbstractRoomController.ObjectType.PORTAL_GEM;
     }
 
     @Override

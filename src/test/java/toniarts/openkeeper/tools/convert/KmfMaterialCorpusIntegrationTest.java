@@ -56,12 +56,13 @@ class KmfMaterialCorpusIntegrationTest {
                 .orElseThrow();
 
         assertEquals(ColorRGBA.White, material.getParam("Emissive").getValue());
-        assertEquals(ColorRGBA.White, material.getParam("GlowColor").getValue());
+        assertFalse(material.getParams().stream().anyMatch(param -> "GlowColor".equals(param.getName())));
     }
 
     @Test
     void loadsTheGemSphereEnvironmentMap() throws IOException {
-        Material material = materials("gem.kmf").stream()
+        List<Material> gemMaterials = materials("gem.kmf");
+        Material material = gemMaterials.stream()
                 .filter(candidate -> candidate.getParam("EnvMap") != null)
                 .findFirst()
                 .orElseThrow();
@@ -69,7 +70,19 @@ class KmfMaterialCorpusIntegrationTest {
         Texture environmentMap = (Texture) material.getParam("EnvMap").getValue();
         assertNotNull(environmentMap);
         assertTrue(environmentMap.getKey().getName().endsWith("EnvmapK.png"));
+        assertTrue((Boolean) material.getParam("EnvMapAsSphereMap").getValue());
         assertEquals(new Vector3f(1f, 0f, 1f), material.getParam("FresnelParams").getValue());
+        assertEquals(RenderState.FaceCullMode.Off, material.getAdditionalRenderState().getFaceCullMode());
+
+        Material rays = gemMaterials.stream()
+                .filter(candidate -> candidate.getAdditionalRenderState().getBlendMode()
+                        == RenderState.BlendMode.Additive)
+                .findFirst()
+                .orElseThrow();
+        assertTrue(rays.isTransparent());
+        assertFalse(rays.getAdditionalRenderState().isDepthWrite());
+        assertEquals(RenderState.FaceCullMode.Off, rays.getAdditionalRenderState().getFaceCullMode());
+        assertEquals(ColorRGBA.White, rays.getParam("Emissive").getValue());
     }
 
     private static List<Material> materials(String fileName) throws IOException {

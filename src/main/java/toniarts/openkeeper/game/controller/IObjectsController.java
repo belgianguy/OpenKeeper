@@ -45,6 +45,15 @@ public interface IObjectsController extends IEntityWrapper<IObjectController> {
 
     public EntityId addLooseGold(short ownerId, int x, int y, int money, int maxMoney);
 
+    /**
+     * Drops the level's Portal Gem object at the specified world position.
+     *
+     * @param ownerId owner of the dropped gem
+     * @param pos drop position
+     * @return entity ID of the gem
+     */
+    public EntityId addPortalGem(short ownerId, Vector3f pos);
+
     public EntityId addRoomSpellBook(short ownerId, int x, int y, ResearchableEntity researchableEntity);
 
     /**

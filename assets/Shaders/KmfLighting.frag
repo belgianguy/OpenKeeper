@@ -191,7 +191,7 @@ void main(){
           if(spotFallOff <= 0.0){
               gl_FragColor.rgb = AmbientSum * diffuseColor.rgb;
               #ifdef EMISSIVE
-                  gl_FragColor.rgb += m_Emissive.rgb;
+                  gl_FragColor.rgb += m_Emissive.rgb * diffuseColor.rgb;
               #endif
               gl_FragColor.a   = alpha;
               return;
@@ -225,7 +225,7 @@ void main(){
     #endif
 
     #ifdef EMISSIVE
-        gl_FragColor.rgb += m_Emissive.rgb;
+        gl_FragColor.rgb += m_Emissive.rgb * diffuseColor.rgb;
     #endif
 
     // add fog after the lighting because shadows will cause the fog to darken

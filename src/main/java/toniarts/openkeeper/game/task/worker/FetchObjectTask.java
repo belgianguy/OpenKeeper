@@ -22,6 +22,7 @@ import toniarts.openkeeper.game.controller.IMapController;
 import toniarts.openkeeper.game.controller.creature.ICreatureController;
 import toniarts.openkeeper.game.controller.object.IObjectController;
 import toniarts.openkeeper.game.controller.room.IRoomController;
+import toniarts.openkeeper.game.controller.room.AbstractRoomController;
 import toniarts.openkeeper.game.navigation.INavigationService;
 import toniarts.openkeeper.game.task.AbstractTileTask;
 import toniarts.openkeeper.game.task.TaskManager;
@@ -75,6 +76,9 @@ public final class FetchObjectTask extends AbstractTileTask {
     }
 
     private boolean isPlayerCapacityFull() {
+        if (gameObject.getType() == AbstractRoomController.ObjectType.PORTAL_GEM) {
+            return false;
+        }
         for (IRoomController room : mapController.getRoomsByFunction(gameObject.getType(), playerId)) {
             if (!room.isFullCapacity()) {
                 return false;

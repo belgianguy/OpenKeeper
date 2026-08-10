@@ -122,6 +122,34 @@ tasks.register("validateMaterialShowcaseMap", JavaExec) {
     }
 }
 
+tasks.register("generatePortalGemCampaignMap", JavaExec) {
+    group = "verification"
+    description = "Generate PortalGemCampaign in the configured Dungeon Keeper 2 editor maps folder"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "toniarts.openkeeper.tools.convert.map.PortalGemCampaignMapGenerator"
+    def dk2Root = providers.systemProperty("openkeeper.dk2.root")
+    doFirst {
+        if (!dk2Root.isPresent()) {
+            throw new GradleException("Pass -Dopenkeeper.dk2.root=/path/to/Dungeon\\ Keeper\\ 2")
+        }
+        args dk2Root.get()
+    }
+}
+
+tasks.register("validatePortalGemCampaignMap", JavaExec) {
+    group = "verification"
+    description = "Parse and validate PortalGemCampaign from the configured Dungeon Keeper 2 folder"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "toniarts.openkeeper.tools.convert.map.PortalGemCampaignMapGenerator"
+    def dk2Root = providers.systemProperty("openkeeper.dk2.root")
+    doFirst {
+        if (!dk2Root.isPresent()) {
+            throw new GradleException("Pass -Dopenkeeper.dk2.root=/path/to/Dungeon\\ Keeper\\ 2")
+        }
+        args dk2Root.get(), "--validate"
+    }
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)

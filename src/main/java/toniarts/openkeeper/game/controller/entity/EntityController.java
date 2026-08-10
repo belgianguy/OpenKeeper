@@ -32,6 +32,7 @@ import toniarts.openkeeper.game.component.Health;
 import toniarts.openkeeper.game.component.InHand;
 import toniarts.openkeeper.game.component.Owner;
 import toniarts.openkeeper.game.component.Position;
+import toniarts.openkeeper.game.component.PortalGem;
 import toniarts.openkeeper.game.component.Stored;
 import toniarts.openkeeper.game.controller.IMapController;
 import toniarts.openkeeper.game.controller.IObjectsController;
@@ -140,8 +141,17 @@ public class EntityController implements IEntityController {
             entityData.removeComponent(entityId, Gold.class);
         }
 
-        // Drop Portal Gem
-        // TODO:
+        // Drop the attached Portal Gem through the level's designated gem
+        // object, mirroring DKII's creature-death behavior.
+        PortalGem portalGem = entityData.getComponent(entityId, PortalGem.class);
+        if (portalGem != null) {
+            Position position = entityData.getComponent(entityId, Position.class);
+            Owner owner = entityData.getComponent(entityId, Owner.class);
+            if (position != null && owner != null) {
+                objectsController.addPortalGem(owner.ownerId, position.position);
+            }
+            entityData.removeComponent(entityId, PortalGem.class);
+        }
     }
 
     private void handleAssociatedEntities() {

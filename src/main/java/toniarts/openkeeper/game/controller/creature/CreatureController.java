@@ -1383,6 +1383,9 @@ public final class CreatureController extends EntityController implements ICreat
             addGold(entityData.getComponent(object.getEntityId(), Gold.class).gold);
             entityData.removeComponent(object.getEntityId(), Gold.class);
             object.remove();
+        } else if (object.getType() == AbstractRoomController.ObjectType.PORTAL_GEM) {
+            attachPortalGem();
+            object.remove();
         } else {
             logger.log(Level.WARNING, "Object {0} receiving not specified!", object.getType());
         }

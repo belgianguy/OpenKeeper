@@ -40,7 +40,7 @@ public final class Material {
         // DKII maps these two values into its internal transparency-mode family.
         UNKNOWN10(0x0010), // only used for 'Angel Bed RibsCreature Bed_Dark Angel2'
         UNKNOWN20(0x0020), // never used?
-        // Enables sphere environment mapping; the following scalar controls its strength.
+        // Enables DKII's additive sphere environment-map pass.
         HAS_SPECULAR(0x0040),
         // The preceding scalar is a constant self-illumination value.
         HAS_EMISSIVE(0x0080),

@@ -60,7 +60,9 @@ public abstract class AssetsConverter implements IConversionTaskUpdate {
     public enum ConvertProcess {
 
         TEXTURES(7, new ConvertProcess[]{}),
-        MODELS(11, new ConvertProcess[]{TEXTURES}),
+        // KMF material flags now affect blending, emission and environment maps;
+        // existing J3O/J3M files must be rebuilt to contain those semantics.
+        MODELS(15, new ConvertProcess[]{TEXTURES}),
         MOUSE_CURSORS(4, new ConvertProcess[]{}),
         MUSIC_AND_SOUNDS(4, new ConvertProcess[]{}),
         INTERFACE_TEXTS(3, new ConvertProcess[]{}),

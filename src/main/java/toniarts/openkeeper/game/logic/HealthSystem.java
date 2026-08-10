@@ -43,6 +43,7 @@ import toniarts.openkeeper.game.component.Navigation;
 import toniarts.openkeeper.game.component.ObjectViewState;
 import toniarts.openkeeper.game.component.Owner;
 import toniarts.openkeeper.game.component.Position;
+import toniarts.openkeeper.game.component.PortalGem;
 import toniarts.openkeeper.game.component.Regeneration;
 import toniarts.openkeeper.game.component.Unconscious;
 import toniarts.openkeeper.game.controller.ICreaturesController;
@@ -173,6 +174,14 @@ public final class HealthSystem extends GameTimeCounter {
     }
 
     private void processHealthDepleted(EntityId entityId, Health health) {
+
+        // DKII's campaign bosses die immediately so their attached Portal Gem
+        // drops at the end of the fight. They must not enter the normal
+        // unconscious/rescue window used by other creatures.
+        if (entityData.getComponent(entityId, PortalGem.class) != null) {
+            processDeath(entityId);
+            return;
+        }
 
         // Death or destruction!!!!
         // No body, just vanish from the world

@@ -28,8 +28,8 @@ import toniarts.openkeeper.tools.convert.map.Thing.Object;
 public final class MaterialShowcaseMapGenerator {
 
     static final String MAP_NAME = "MaterialShowcase";
-    private static final String TEMPLATE_NAME = "Small";
-    private static final List<String> FILE_SUFFIXES = List.of(
+    static final String TEMPLATE_NAME = "Small";
+    static final List<String> FILE_SUFFIXES = List.of(
             ".kwd", "Map.kld", "Players.kld", "Things.kld", "Triggers.kld", "Variables.kld");
     private static final int MAP_HEADER_SIZE = 36;
     private static final int THINGS_HEADER_SIZE = 56;
@@ -69,7 +69,7 @@ public final class MaterialShowcaseMapGenerator {
                     StandardCopyOption.COPY_ATTRIBUTES);
         }
 
-        rewriteLevelFile(maps.resolve(MAP_NAME + ".kwd"));
+        rewriteLevelFile(maps.resolve(MAP_NAME + ".kwd"), TEMPLATE_NAME, MAP_NAME);
         rewriteTiles(maps.resolve(MAP_NAME + "Map.kld"));
         appendShowcaseThings(maps.resolve(MAP_NAME + "Things.kld"));
         Files.writeString(maps.resolve(MAP_NAME + "-README.txt"), readme(), StandardCharsets.UTF_8);
@@ -83,16 +83,21 @@ public final class MaterialShowcaseMapGenerator {
                 || level.getMap().getHeight() != MAP_HEIGHT) {
             throw new IllegalStateException("Generated level metadata is invalid");
         }
-        assertTerrain(level, 18, 6, 5, "lava");
-        assertTerrain(level, 18, 16, 4, "water");
-        assertTerrain(level, 5, 27, 7, "gem wall");
-        assertTerrain(level, 19, 28, 11, "lair");
+        assertTerrain(level, 16, 5, 5, "lava");
+        assertTerrain(level, 16, 13, 4, "water");
+        assertTerrain(level, 5, 17, 7, "gem wall");
+        assertTerrain(level, 10, 18, 11, "lair");
+        assertTerrain(level, 5, 5, 22, "temple");
+        assertTerrain(level, 31, 33, 30, "blue keeper enclosure");
+        assertTerrain(level, 15, 22, 9, "portal gem display wall");
 
         long candles = level.getThings(Object.class).stream().filter(thing -> thing.getObjectId() == 111).count();
-        long gems = level.getThings(Object.class).stream().filter(thing -> thing.getObjectId() == 28).count();
+        long gems = level.getThings(Object.class).stream()
+                .filter(thing -> thing.getObjectId() == 28 && thing.getPlayerId() == 1)
+                .count();
         boolean mistress = level.getThings(KeeperCreature.class).stream().anyMatch(thing -> thing.getCreatureId() == 4);
         boolean darkAngel = level.getThings(KeeperCreature.class).stream().anyMatch(thing -> thing.getCreatureId() == 23);
-        if (candles < 4 || gems < 2 || !mistress || !darkAngel) {
+        if (candles < 4 || gems != 0 || !mistress || !darkAngel) {
             throw new IllegalStateException("Generated showcase things are incomplete");
         }
     }
@@ -104,16 +109,16 @@ public final class MaterialShowcaseMapGenerator {
         }
     }
 
-    private static void rewriteLevelFile(Path levelFile) throws IOException {
+    static void rewriteLevelFile(Path levelFile, String oldName, String newName) throws IOException {
         byte[] data = Files.readAllBytes(levelFile);
-        replaceFirst(data, utf16(TEMPLATE_NAME), utf16(MAP_NAME));
+        replaceFirst(data, utf16(oldName), utf16(newName));
         for (String suffix : FILE_SUFFIXES.subList(1, FILE_SUFFIXES.size())) {
-            replaceFirst(data, ascii(TEMPLATE_NAME + suffix), ascii(MAP_NAME + suffix));
+            replaceFirst(data, ascii(oldName + suffix), ascii(newName + suffix));
         }
         Files.write(levelFile, data);
     }
 
-    private static void rewriteTiles(Path mapFile) throws IOException {
+    static void rewriteTiles(Path mapFile) throws IOException {
         byte[] data = Files.readAllBytes(mapFile);
         if (data.length != MAP_HEADER_SIZE + MAP_WIDTH * MAP_HEIGHT * 4) {
             throw new IOException("Unexpected SmallMap.kld layout: " + data.length + " bytes");
@@ -131,21 +136,37 @@ public final class MaterialShowcaseMapGenerator {
         fill(data, 0, 0, 1, MAP_HEIGHT - 1, 30, 2);
         fill(data, MAP_WIDTH - 2, 0, MAP_WIDTH - 1, MAP_HEIGHT - 1, 30, 2);
 
-        // Preserve both template dungeon hearts and their starting imps.
+        // Preserve both template dungeon hearts and their starting imps. Seal
+        // the blue keeper inside an impenetrable ring for an undisturbed test.
         fill(data, 10, 10, 14, 14, 14, 3);
         fill(data, 33, 33, 37, 37, 14, 4);
+        fill(data, 31, 31, 39, 31, 30, 2);
+        fill(data, 31, 39, 39, 39, 30, 2);
+        fill(data, 31, 31, 31, 39, 30, 2);
+        fill(data, 39, 31, 39, 39, 30, 2);
+
+        // A real Temple room distinguishes constructed candlesticks from the
+        // otherwise identical bare candle models placed beside the lava.
+        fill(data, 5, 5, 9, 9, 22, 3);
 
         // Side-by-side surface comparison, with candles along the lava edge.
-        fill(data, 18, 6, 29, 13, 5, 2);
-        fill(data, 18, 16, 29, 23, 4, 2);
+        fill(data, 16, 5, 25, 11, 5, 2);
+        fill(data, 16, 13, 25, 19, 4, 2);
 
         // Environment-mapped gem wall and a lair-material display pad.
-        fill(data, 5, 27, 14, 30, 7, 2);
-        fill(data, 19, 28, 25, 34, 11, 3);
+        fill(data, 5, 17, 8, 24, 7, 2);
+        fill(data, 10, 18, 14, 24, 11, 3);
+
+        // Enclosed arena used by PortalGemCampaign's gem-carrying boss. The
+        // reinforced walls also supply nearby torches for billboard comparison.
+        fill(data, 15, 20, 22, 20, 9, 3);
+        fill(data, 15, 24, 22, 24, 9, 3);
+        fill(data, 15, 20, 15, 24, 9, 3);
+        fill(data, 22, 20, 22, 24, 9, 3);
 
         // Small pens keep the two reflective creatures near their markers.
-        makePen(data, 31, 18, 35, 22);
-        makePen(data, 37, 18, 41, 22);
+        makePen(data, 27, 6, 31, 10);
+        makePen(data, 27, 13, 31, 17);
 
         Files.write(mapFile, data);
     }
@@ -157,27 +178,24 @@ public final class MaterialShowcaseMapGenerator {
         fill(data, x2, y1, x2, y2, 9, 3);
     }
 
-    private static void appendShowcaseThings(Path thingsFile) throws IOException {
+    static void appendShowcaseThings(Path thingsFile) throws IOException {
         byte[] original = Files.readAllBytes(thingsFile);
         ByteArrayOutputStream additions = new ByteArrayOutputStream();
 
-        // Emissive candles beside lava.
-        writeObject(additions, 17, 7, 111, 3);
-        writeObject(additions, 17, 10, 111, 3);
-        writeObject(additions, 30, 7, 111, 3);
-        writeObject(additions, 30, 10, 111, 3);
-
-        // Sphere-mapped portal gems.
-        writeObject(additions, 32, 8, 28, 3);
-        writeObject(additions, 35, 8, 28, 3);
+        // Bare emissive candle models beside lava. DKII leaves these flames
+        // unlit; compare them with the room-constructed Temple candlesticks.
+        writeObject(additions, 15, 6, 111, 3);
+        writeObject(additions, 15, 10, 111, 3);
+        writeObject(additions, 26, 6, 111, 3);
+        writeObject(additions, 26, 10, 111, 3);
 
         // Lair objects exercise the Mistress environment map and Dark Angel 0x10 material.
-        writeObject(additions, 21, 31, 23, 3);
-        writeObject(additions, 23, 31, 19, 3);
+        writeObject(additions, 11, 21, 23, 3);
+        writeObject(additions, 13, 21, 19, 3);
 
         // Live models make camera-relative environment mapping easy to inspect.
-        writeKeeperCreature(additions, 33, 20, 4, 3);  // Mistress
-        writeKeeperCreature(additions, 39, 20, 23, 3); // Dark Angel
+        writeKeeperCreature(additions, 29, 8, 4, 3);  // Mistress
+        writeKeeperCreature(additions, 29, 15, 23, 3); // Dark Angel
 
         byte[] extra = additions.toByteArray();
         byte[] result = new byte[original.length + extra.length];
@@ -186,7 +204,7 @@ public final class MaterialShowcaseMapGenerator {
 
         ByteBuffer header = ByteBuffer.wrap(result).order(ByteOrder.LITTLE_ENDIAN);
         header.putInt(8, result.length);
-        header.putInt(20, header.getInt(20) + 10);
+        header.putInt(20, header.getInt(20) + 8);
         header.putInt(52, result.length - THINGS_HEADER_SIZE);
         Files.write(thingsFile, result);
     }
@@ -271,13 +289,16 @@ public final class MaterialShowcaseMapGenerator {
                 Load MaterialShowcase from the custom-map menu.
 
                 Areas:
-                - North centre: lava and water comparison pools; candles test emissive glow.
-                - North-east: two portal gems test environment mapping while rotating the camera.
-                - East centre pens: Mistress and Dark Angel test camera-relative reflections.
-                - South-west: gem terrain provides another environment-mapping reference.
-                - South centre lair: Mistress and Dark Angel beds exercise their special materials.
+                All exhibits form a compact ring around the player-one dungeon heart:
+                - North-west: genuine Temple room with room-constructed candlesticks.
+                - North-east: lava pool with four bare candle models; water lies below it.
+                - East pens: Mistress above, Dark Angel below.
+                - South-east: enclosed boss arena used by the companion PortalGemCampaign map.
+                - South-west: gem terrain and a lair containing Mistress and Dark Angel beds.
+                - Far south-east: blue keeper sealed inside impenetrable rock.
 
                 Toggle Bloom in Graphics Options to compare the lava and candle glow.
+                Compare Temple candle flames and wall-torch flames between DKII and OpenKeeper.
                 The #TRANS25#icey material cannot be represented by a persistent stock map object;
                 use iceicle.kmf in the model viewer for that isolated check.
                 """;

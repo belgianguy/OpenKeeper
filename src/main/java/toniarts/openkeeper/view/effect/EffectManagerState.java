@@ -106,14 +106,21 @@ public class EffectManagerState extends AbstractAppState {
      * @param infinite the effect should restart always, infinite effect (room
      * effects...?)
      */
-    public void load(Node node, Vector3f location, int effectId, boolean infinite) {
+    public VisualEffect load(Node node, Vector3f location, int effectId, boolean infinite) {
 
         // Load the effect
         if (effectId == 0) {
-            return;
+            return null;
         }
         VisualEffect visualEffect = new VisualEffect(this, node, location, kwdFile.getEffect(effectId), infinite);
         activeEffects.add(visualEffect);
+        return visualEffect;
+    }
+
+    public void remove(VisualEffect visualEffect) {
+        if (visualEffect != null && activeEffects.remove(visualEffect)) {
+            visualEffect.removeEffect();
+        }
     }
 
     public PlayerMapViewState getPlayerMapViewState() {

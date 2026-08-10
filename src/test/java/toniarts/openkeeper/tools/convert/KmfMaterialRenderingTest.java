@@ -34,7 +34,9 @@ class KmfMaterialRenderingTest {
 
         assertEquals(VarType.Vector4, material.getMaterialDef().getMaterialParam("Emissive").getVarType());
         assertEquals(VarType.Texture2D, material.getMaterialDef().getMaterialParam("EnvMap").getVarType());
+        assertEquals(VarType.Boolean, material.getMaterialDef().getMaterialParam("EnvMapAsSphereMap").getVarType());
         assertNotNull(assetManager.locateAsset(new AssetKey<>("Shaders/KmfLighting.frag")));
+        assertNotNull(assetManager.locateAsset(new AssetKey<>("Shaders/KmfSPLighting.vert")));
         assertNotNull(assetManager.locateAsset(new AssetKey<>("Shaders/KmfSPLighting.frag")));
     }
 
@@ -51,7 +53,7 @@ class KmfMaterialRenderingTest {
         assertFalse(material.getAdditionalRenderState().isDepthWrite());
         assertEquals(FaceCullMode.Off, material.getAdditionalRenderState().getFaceCullMode());
         assertEquals(new ColorRGBA(0.6f, 0.6f, 0.6f, 1f), material.getParam("Emissive").getValue());
-        assertEquals(new ColorRGBA(0.6f, 0.6f, 0.6f, 1f), material.getParam("GlowColor").getValue());
+        assertFalse(material.getParams().stream().anyMatch(param -> "GlowColor".equals(param.getName())));
     }
 
     @Test
@@ -61,9 +63,10 @@ class KmfMaterialRenderingTest {
 
         KmfModelLoader.setMaterialFlags(material, source);
 
-        assertEquals(RenderState.BlendMode.AlphaAdditive, material.getAdditionalRenderState().getBlendMode());
+        assertEquals(RenderState.BlendMode.Additive, material.getAdditionalRenderState().getBlendMode());
         assertFalse(material.getAdditionalRenderState().isDepthWrite());
         assertFalse(material.isReceivesShadows());
+        assertEquals(ColorRGBA.White, material.getParam("Emissive").getValue());
     }
 
     @Test

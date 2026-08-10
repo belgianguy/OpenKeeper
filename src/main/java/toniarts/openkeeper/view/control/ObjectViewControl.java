@@ -17,6 +17,7 @@
 package toniarts.openkeeper.view.control;
 
 import com.jme3.asset.AssetManager;
+import com.jme3.math.FastMath;
 import com.jme3.scene.Spatial;
 import com.simsilica.es.EntityData;
 import com.simsilica.es.EntityId;
@@ -36,11 +37,33 @@ import toniarts.openkeeper.view.text.EntityTextParser;
  */
 public final class ObjectViewControl extends EntityViewControl<GameObject, ObjectViewState> {
 
+    private static final int DKII_ANGLE_UNITS_PER_REVOLUTION = 2048;
+    private static final int DKII_LANDING_SPIN_RANGE = 2000;
+    private static final int DKII_LANDING_SPIN_OFFSET = 1000;
+
     private boolean initialized = false;
+    private final float angularSpeed;
 
     public ObjectViewControl(EntityId entityId, EntityData entityData, GameObject data, ObjectViewState state,
-            AssetManager assetManager, EntityTextParser<GameObject> textParser) {
+            AssetManager assetManager, EntityTextParser<GameObject> textParser, int gameTicksPerSecond) {
         super(entityId, entityData, data, state, assetManager, textParser);
+        angularSpeed = data.getFlags().contains(GameObject.ObjectFlag.OBJECT_TYPE_LEVEL_GEM)
+                && state != null && state.state == GameObject.State.PORTAL_GEM
+                ? toRadiansPerSecond(Utils.getRandom().nextInt(DKII_LANDING_SPIN_RANGE)
+                        - DKII_LANDING_SPIN_OFFSET, gameTicksPerSecond)
+                : 0f;
+    }
+
+    static float toRadiansPerSecond(int angularIncrement, int gameTicksPerSecond) {
+        return angularIncrement * FastMath.TWO_PI / DKII_ANGLE_UNITS_PER_REVOLUTION * gameTicksPerSecond;
+    }
+
+    @Override
+    protected void controlUpdate(float tpf) {
+        super.controlUpdate(tpf);
+        if (angularSpeed != 0f) {
+            spatial.rotate(0f, angularSpeed * tpf, 0f);
+        }
     }
 
     @Override

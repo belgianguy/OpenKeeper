@@ -2,7 +2,6 @@
 // Derived from jMonkeyEngine 3.9 SPLighting.frag.
 #import "Common/ShaderLib/GLSLCompat.glsllib"
 #import "Common/ShaderLib/Parallax.glsllib"
-#import "Common/ShaderLib/Optics.glsllib"
 #ifndef VERTEX_LIGHTING
     #import "Common/ShaderLib/BlinnPhongLighting.glsllib"
     #import "Common/ShaderLib/Lighting.glsllib"
@@ -86,11 +85,8 @@ uniform vec4 m_Emissive;
 uniform float m_Shininess;
 
     #ifdef USE_REFLECTION 
-        uniform float m_ReflectionPower;
-        uniform float m_ReflectionIntensity;
-        varying vec4 refVec;
-
-        uniform ENVMAP m_EnvMap;
+        varying vec2 dkiiEnvCoord;
+        uniform sampler2D m_EnvMap;
     #endif
 #endif
 
@@ -199,7 +195,11 @@ void main(){
         gl_FragColor.rgb = AmbientSum * diffuseColor.rgb;
 
         #ifdef USE_REFLECTION
-             vec4 refColor = Optics_GetEnvColor(m_EnvMap, refVec.xyz);
+             vec4 refColor = texture2D(m_EnvMap, dkiiEnvCoord);
+             // DKII draws the environment texture once as a separate
+             // source-ONE / destination-ONE pass. Keep it independent of the
+             // number and color of lights in jME's single-pass light loop.
+             gl_FragColor.rgb += refColor.rgb;
         #endif
 
         for( int i = 0;i < NB_LIGHTS; i+=3){
@@ -231,14 +231,6 @@ void main(){
 
             // Workaround, since it is not possible to modify varying variables
             vec4 SpecularSum2 = vec4(SpecularSum, 1.0);
-            #ifdef USE_REFLECTION                    
-                 // Interpolate light specularity toward reflection color
-                 // Multiply result by specular map
-                 specularColor = mix(SpecularSum2 * light.y, refColor, refVec.w) * specularColor;
-
-                 SpecularSum2 = vec4(1.0);
-                 light.y = 1.0;
-            #endif
 
             vec3 DiffuseSum2 = DiffuseSum.rgb;
             #ifdef COLORRAMP
@@ -254,7 +246,7 @@ void main(){
      #endif
 
     #ifdef EMISSIVE
-        gl_FragColor.rgb += m_Emissive.rgb;
+        gl_FragColor.rgb += m_Emissive.rgb * diffuseColor.rgb;
     #endif
 
     // add fog after the lighting because shadows will cause the fog to darken

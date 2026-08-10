@@ -196,6 +196,9 @@ public final class KmfModelLoader implements AssetLoader {
             var vertices = new Vector3f[subMesh.getVertices().size()];
             var texCoord = new Vector2f[subMesh.getVertices().size()];
             var normals  = new Vector3f[subMesh.getVertices().size()];
+            var meshCenters = new Vector3f[subMesh.getVertices().size()];
+            Vector3f meshCenter = new Vector3f(sourceMesh.getPos().x,
+                    -sourceMesh.getPos().z, sourceMesh.getPos().y);
             int i = 0;
             for (MeshVertex meshVertex : subMesh.getVertices()) {
 
@@ -210,6 +213,7 @@ public final class KmfModelLoader implements AssetLoader {
                 //Normals
                 v = meshVertex.getNormal();
                 normals[i] = new Vector3f(v.x, -v.z, v.y);
+                meshCenters[i] = meshCenter;
 
                 i++;
             }
@@ -223,6 +227,7 @@ public final class KmfModelLoader implements AssetLoader {
             mesh.setBuffer(Type.Position, 3, BufferUtils.createFloatBuffer(vertices));
             mesh.setBuffer(Type.TexCoord, 2, BufferUtils.createFloatBuffer(texCoord));
             mesh.setBuffer(Type.Normal, 3, BufferUtils.createFloatBuffer(normals));
+            mesh.setBuffer(Type.TexCoord3, 3, BufferUtils.createFloatBuffer(meshCenters));
             mesh.setStatic();
 
             // Create geometry
@@ -286,6 +291,8 @@ public final class KmfModelLoader implements AssetLoader {
             var vertices = new Vector3f[subMesh.getVertices().size()];
             var texCoord = new Vector2f[subMesh.getVertices().size()];
             var normals  = new Vector3f[subMesh.getVertices().size()];
+            var meshCenters = new Vector3f[subMesh.getVertices().size()];
+            Vector3f meshCenter = new Vector3f(anim.getPos().x, -anim.getPos().z, anim.getPos().y);
             int i = 0;
             for (var animVertex : subMesh.getVertices()) {
 
@@ -373,6 +380,7 @@ public final class KmfModelLoader implements AssetLoader {
                 //Normals
                 var v = animVertex.getNormal();
                 normals[i] = new Vector3f(v.x, -v.z, v.y);
+                meshCenters[i] = meshCenter;
 
                 i++;
             }
@@ -439,6 +447,7 @@ public final class KmfModelLoader implements AssetLoader {
             mesh.setBuffer(Type.BindPosePosition, 3, BufferUtils.createFloatBuffer(vertices));
             // no BindPoseNormal! not animated in KMF
             mesh.setBuffer(Type.Normal, 3, BufferUtils.createFloatBuffer(normals));
+            mesh.setBuffer(Type.TexCoord3, 3, BufferUtils.createFloatBuffer(meshCenters));
 
             // only position buffer is dynamic
             mesh.setStatic();
@@ -582,7 +591,8 @@ public final class KmfModelLoader implements AssetLoader {
             material.setTransparent(true);
             material.setFloat("AlphaDiscardThreshold", 0.1f);
             material.getAdditionalRenderState().setDepthWrite(false);
-            material.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.AlphaAdditive);
+            // DKII maps KMF flag 0x04 to source ONE / destination ONE.
+            material.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Additive);
         }
         if (kmfMaterial.getFlag().contains(MaterialFlag.TRANSLUCENT)) {
             material.setTransparent(true);
@@ -593,11 +603,22 @@ public final class KmfModelLoader implements AssetLoader {
         if (kmfMaterial.getFlag().contains(MaterialFlag.DOUBLE_SIDED))
             material.getAdditionalRenderState().setFaceCullMode(FaceCullMode.Off);
 
-        if (kmfMaterial.getFlag().contains(MaterialFlag.HAS_EMISSIVE)) {
-            float emissive = kmfMaterial.getEmissive();
+        if (kmfMaterial.getFlag().contains(MaterialFlag.HAS_EMISSIVE)
+                || kmfMaterial.getFlag().contains(MaterialFlag.ALPHA_ADDITIVE)) {
+            // DKII forces all three lighting channels to 255 for flag 0x04.
+            // The normal emissive scalar is used only for flag 0x80.
+            float emissive = kmfMaterial.getFlag().contains(MaterialFlag.ALPHA_ADDITIVE)
+                    ? 1f : kmfMaterial.getEmissive();
             ColorRGBA emissiveColor = new ColorRGBA(emissive, emissive, emissive, 1f);
             material.setColor("Emissive", emissiveColor);
-            material.setColor("GlowColor", emissiveColor);
+            // DKII adds this value to the lighting channels before modulating
+            // them with the diffuse texture. It is not a separate white glow.
+            material.clearParam("GlowColor");
+        } else {
+            // Materials can be loaded from an older generated J3M during a
+            // conversion pass, so remove parameters produced by that version.
+            material.clearParam("Emissive");
+            material.clearParam("GlowColor");
         }
 
         if (kmfMaterial.getFlag().contains(MaterialFlag.INVISIBLE)) {
@@ -618,7 +639,11 @@ public final class KmfModelLoader implements AssetLoader {
 
         Texture environmentMap = loadTexture(kmfMaterial.getEnvironmentMapTexture(), assetInfo);
         material.setTexture("EnvMap", environmentMap);
-        material.setVector3("FresnelParams", new Vector3f(kmfMaterial.getSpecular(), 0f, 1f));
+        material.setBoolean("EnvMapAsSphereMap", true);
+        // DKII renders the environment texture as a full-strength additive
+        // sphere-map pass. Its renderer reads the adjacent scalar but does not
+        // use it before the temporary is overwritten.
+        material.setVector3("FresnelParams", new Vector3f(1f, 0f, 1f));
     }
 
     /**
