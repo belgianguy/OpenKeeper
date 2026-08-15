@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import toniarts.openkeeper.game.controller.IMapController;
 import toniarts.openkeeper.game.component.Mobile;
 import toniarts.openkeeper.game.component.Navigation;
 import toniarts.openkeeper.game.component.Position;
@@ -36,6 +37,7 @@ import toniarts.openkeeper.game.navigation.steering.EntitySteeringFactory;
 import toniarts.openkeeper.game.navigation.steering.ISteerableEntity;
 import toniarts.openkeeper.game.navigation.steering.SteerableEntity;
 import toniarts.openkeeper.game.navigation.steering.SteeringUtils;
+import toniarts.openkeeper.utils.WorldUtils;
 
 /**
  * Handles moving of the entities
@@ -45,6 +47,7 @@ import toniarts.openkeeper.game.navigation.steering.SteeringUtils;
 public final class MovementSystem implements IGameLogicUpdatable {
     
     private final static boolean INDEPENDENT_FACING = false;
+    private static final float WATER_SPEED_MODIFIER = 0.5f;
     
     private final SafeArrayList<EntitySteeringBehavior> steeringBehaviors = new SafeArrayList<>(EntitySteeringBehavior.class);
     private final Map<EntityId, ISteerableEntity> steerableEntitiesByEntityId = new HashMap<>();
@@ -61,9 +64,11 @@ public final class MovementSystem implements IGameLogicUpdatable {
     private final Map<EntitySteeringBehavior, SteeringAcceleration<Vector2>> steeringOutputsBySteeringBehaviors = new HashMap<>();
     private final EntitySet movableEntities;
     private final EntityData entityData;
+    private final IMapController mapController;
 
-    public MovementSystem(EntityData entityData) {
+    public MovementSystem(EntityData entityData, IMapController mapController) {
         this.entityData = entityData;
+        this.mapController = mapController;
         movableEntities = entityData.getEntities(Position.class, Mobile.class, Navigation.class);
 
         processAddedEntities(movableEntities);
@@ -81,6 +86,9 @@ public final class MovementSystem implements IGameLogicUpdatable {
 
         // Process ticks
         for (EntitySteeringBehavior steeringBehavior : steeringBehaviors.getArray()) {
+            EntityId entityId = entityIdsBySteeringBehavior.get(steeringBehavior);
+            ISteerableEntity steerableEntity = steerableEntitiesBySteeringBehavior.get(steeringBehavior);
+            updateMaxSpeed(entityId, steerableEntity);
 
             // Calculate steering acceleration
             SteeringAcceleration<Vector2> steeringOutput = steeringOutputsBySteeringBehaviors.get(steeringBehavior);
@@ -94,8 +102,22 @@ public final class MovementSystem implements IGameLogicUpdatable {
              * accelerate; and it only moves in the direction it is facing (ignoring power slides).
              */
             // Apply steering acceleration
-            applySteering(entityIdsBySteeringBehavior.get(steeringBehavior), steerableEntitiesBySteeringBehavior.get(steeringBehavior), steeringOutput, tpf);
+            applySteering(entityId, steerableEntity, steeringOutput, tpf);
         }
+    }
+
+    private void updateMaxSpeed(EntityId entityId, ISteerableEntity steerableEntity) {
+        Mobile mobile = entityData.getComponent(entityId, Mobile.class);
+        Position position = entityData.getComponent(entityId, Position.class);
+        boolean inWater = position != null && mapController.isWater(WorldUtils.vectorToPoint(position.position));
+        steerableEntity.setMaxLinearSpeed(getEffectiveMaxSpeed(mobile, inWater));
+    }
+
+    static float getEffectiveMaxSpeed(Mobile mobile, boolean inWater) {
+        if (inWater && !mobile.canFly) {
+            return mobile.maxSpeed * WATER_SPEED_MODIFIER;
+        }
+        return mobile.maxSpeed;
     }
 
     private void processAddedEntities(Set<Entity> addedEntities) {

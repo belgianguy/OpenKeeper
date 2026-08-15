@@ -879,28 +879,12 @@ public final class CreatureController extends EntityController implements ICreat
     @Override
     public boolean canWalkOnWater() {
         Mobile mobile = entityData.getComponent(entityId, Mobile.class);
-        if (!mobile.canWalkOnWater) {
-
-            // We need anyway to get out from water if we are tossed in such
-            Vector3f pos = getPosition();
-            if (pos != null) {
-                return mapController.isWater(WorldUtils.vectorToPoint(pos));
-            }
-        }
         return mobile.canWalkOnWater;
     }
 
     @Override
     public boolean canWalkOnLava() {
         Mobile mobile = entityData.getComponent(entityId, Mobile.class);
-        if (!mobile.canWalkOnLava) {
-
-            // We need anyway to get out from lava if we are tossed in such
-            Vector3f pos = getPosition();
-            if (pos != null) {
-                return mapController.isLava(WorldUtils.vectorToPoint(pos));
-            }
-        }
         return mobile.canWalkOnLava;
     }
 
