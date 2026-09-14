@@ -102,6 +102,8 @@ import java.util.function.Consumer;
  *
  * @author Toni Helenius <helenius.toni@gmail.com>
  */
+// Entity-controller identity is defined by EntityController's entity ID.
+// skipcq: JAVA-W0100
 public final class CreatureController extends EntityController implements ICreatureController {
 
     private static final Logger logger = System.getLogger(CreatureController.class.getName());

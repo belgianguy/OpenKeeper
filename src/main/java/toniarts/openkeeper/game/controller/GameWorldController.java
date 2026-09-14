@@ -1021,6 +1021,8 @@ public final class GameWorldController implements IGameWorldController, IPlayerA
         int realAmount = Math.min(amount, maxGold);
         PlayerHandControl playerHandControl = playerControllers.get(playerId).getHandControl();
         if (!playerHandControl.isFull()) {
+            // Keep shared gold operations atomic until player actions are processed by the game loop.
+            // skipcq: JAVA-E1061
             synchronized (GOLD_LOCK) {
                 int leftOverRequest = substractGold(realAmount, playerId);
                 realAmount -= leftOverRequest;
