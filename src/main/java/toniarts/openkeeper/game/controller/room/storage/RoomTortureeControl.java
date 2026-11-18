@@ -61,6 +61,8 @@ public abstract class RoomTortureeControl extends AbstractRoomObjectControl<Enti
     private static final short ELECTRIC_CHAIR_OBJECT_ID = 61;
     private final IGameTimer gameTimer;
     private boolean destroyed;
+    private static final short TORTURE_COALS_OBJECT_ID = 62;
+    private static final short TORTURE_WATER_OBJECT_ID = 63;
 
     public RoomTortureeControl(IKwdFile kwdFile, IRoomController parent, EntityData entityData, IGameTimer gameTimer) {
         super(kwdFile, parent, entityData, gameTimer, ObjectType.TORTUREE);
@@ -305,6 +307,13 @@ public abstract class RoomTortureeControl extends AbstractRoomObjectControl<Enti
     private List<EntityId> getDevices() {
         List<EntityId> devices = new ArrayList<>(parent.getFloorFurniture());
         devices.addAll(parent.getWallFurniture());
+
+        // The coals and water troughs under the wheels on the wall hold no victim
+        devices.removeIf(device -> {
+            ObjectComponent objectComponent = entityData.getComponent(device, ObjectComponent.class);
+            return objectComponent != null && (objectComponent.objectId == TORTURE_COALS_OBJECT_ID
+                    || objectComponent.objectId == TORTURE_WATER_OBJECT_ID);
+        });
         return devices;
     }
 
