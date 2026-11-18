@@ -260,6 +260,25 @@ class CreatureTorturedTriggerTest {
         }
     }
 
+    @Test
+    void restoringSavedDeviceOccupancyDoesNotDeliverANewAdmission() {
+        try (Fixture f = new Fixture(255, false)) {
+            f.data.removeComponent(f.entity, Trigger.class);
+            f.factory(true);
+            f.bindScripts(); f.tick();
+            assertEquals(1, f.flags[0]);
+            f.storage = new RoomTortureeControl(f.kwd, f.room, f.data, () -> 20) {
+                @Override protected List<Point> getCoordinates() { return List.of(new Point(1, 1)); }
+                @Override protected int getNumberOfAccessibleTiles() { return 1; }
+            };
+            f.storage.restore();
+            f.tick();
+            assertEquals(1, f.flags[0]);
+            assertTrue(f.storage.getItems().contains(f.lastAdmission));
+            assertEquals(f.device, f.data.getComponent(f.lastAdmission, CreatureTortured.class).device);
+        }
+    }
+
     private static final class Fixture implements AutoCloseable {
         final EntityData data=new DefaultEntityData();
         final EntityId entity=data.createEntity();
