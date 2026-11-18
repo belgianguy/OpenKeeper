@@ -1391,8 +1391,6 @@ public final class GameWorldController implements IGameWorldController, IPlayerA
                 if (device != null) {
                     creatureState = CreatureState.TORTURED;
                     torture = true;
-
-
                 }
             }
             tortureOrImprisonment = imprison || torture;
