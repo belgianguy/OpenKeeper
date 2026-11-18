@@ -145,6 +145,11 @@ public final class CreaturesController implements ICreaturesController {
      * @param saveGame the loaded game, its creatures are in the entities
      * already. {@code null} for a new game
      */
+    public CreaturesController(IKwdFile kwdFile, EntityData entityData, Map<Variable.MiscVariable.MiscType, Variable.MiscVariable> gameSettings,
+            IGameTimer gameTimer, IGameController gameController, IMapController mapController, ILevelInfo levelInfo) {
+        this(kwdFile, entityData, gameSettings, gameTimer, gameController, mapController, levelInfo, null);
+    }
+
     public CreaturesController(IKwdFile kwdFile, EntityData entityData, Map<Variable.MiscVariable.MiscType, Variable.MiscVariable> gameSettings, IGameTimer gameTimer,
             IGameController gameController, IMapController mapController, ILevelInfo levelInfo, @Nullable SaveGame saveGame) {
         this.kwdFile = kwdFile;
@@ -359,6 +364,13 @@ public final class CreaturesController implements ICreaturesController {
         Creature.AnimationType animationType = getStartingAnimation(healthComponent, creatureState);
         entityData.setComponent(entity, new CreatureViewState(creatureId, gameTimer.getGameTime(), animationType));
 
+        if (healthComponent != null) {
+            if (creatureState == CreatureState.IMPRISONED) {
+                onImprisoned(entity);
+            } else if (creatureState == CreatureState.TORTURED) {
+                gameController.onCreatureTortured(entity);
+            }
+        }
         return entity;
     }
 
@@ -722,6 +734,16 @@ public final class CreaturesController implements ICreaturesController {
     }
 
     @Override
+    public void onStunned(EntityId entityId) {
+        gameController.onCreatureStunned(entityId);
+    }
+
+    @Override
+    public void onImprisoned(EntityId entityId) {
+        gameController.onCreatureImprisoned(entityId);
+    }
+
+    @Override
     public ICreatureController createController(EntityId entityId) {
         CreatureComponent creatureComponent = entityData.getComponent(entityId, CreatureComponent.class);
         if (creatureComponent == null) {
@@ -746,7 +768,8 @@ public final class CreaturesController implements ICreaturesController {
                 gameController.getNavigationService(), gameController.getTaskManager(), gameTimer,
                 gameSettings, this, gameController.getEntityLookupService(), mapController, levelInfo,
                 gameController.getGameWorldController().getObjectsController(),
-                gameController.getGameWorldController().getShotsController(), gameController.getGameEventService());
+                gameController.getGameWorldController().getShotsController(), gameController.getGameEventService(),
+                gameController::onCreatureAfraid);
     }
 
     @Override

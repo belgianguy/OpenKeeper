@@ -90,7 +90,7 @@ class ActAsDroppedTest {
         IMapController mapController = stub(IMapController.class, (method, args) -> room);
         IGameTimer gameTimer = stub(IGameTimer.class, (method, args) -> 0.0);
 
-        return new CreaturesController(kwdFile, entityData, null, gameTimer, null, mapController, null, null);
+        return new CreaturesController(kwdFile, entityData, null, gameTimer, stub(toniarts.openkeeper.game.controller.IGameController.class, (method, args) -> null), mapController, null, null);
     }
 
     @SuppressWarnings("unchecked")
