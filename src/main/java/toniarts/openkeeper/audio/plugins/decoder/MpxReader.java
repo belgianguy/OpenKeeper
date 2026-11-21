@@ -459,8 +459,10 @@ public final class MpxReader extends Frame {
             skip = 0;
         }
         try {
-            stream.skip(skip);
-            stream.read(b, 0, 4);
+            stream.skipNBytes(skip);
+            if (stream.readNBytes(b, 0, 4) != 4) {
+                throw new EOFException("Incomplete MPEG frame");
+            }
             incrementSkippedDataLength(skip + 4);
 
             xing = ((char) b[0] == 'X' && (char) b[1] == 'i' && (char) b[2] == 'n' && (char) b[3] == 'g');
@@ -475,10 +477,20 @@ public final class MpxReader extends Frame {
                 if (skip < 0) {
                     skip = 0;
                 }
-                stream.skip(skip);
-                stream.read(b, 0, 4);
-                incrementSkippedDataLength(skip + 4);
-                if (((i = getInt()) >>> 10 & 0x3) != orgSampleFrequency || (i >>> 17 & 0x3) != orgLayer || (i >>> 19 & 0x3) != orgVersion || (AUDIO_SYNC_PATTERN != (i & AUDIO_SYNC_PATTERN))) {
+                // Verify the entire frame body before accepting EOF. A short clip
+                // can contain just one complete frame, optionally followed by zero padding.
+                stream.skipNBytes(skip);
+                int nextHeaderBytes = stream.readNBytes(b, 0, 4);
+                incrementSkippedDataLength(skip + nextHeaderBytes);
+                boolean singleFrame = nextHeaderBytes < 4;
+                if (singleFrame) {
+                    for (int n = 0; n < nextHeaderBytes; n++) {
+                        if (b[n] != 0) {
+                            throw new EOFException("Incomplete MPEG header");
+                        }
+                    }
+                }
+                if (!singleFrame && (((i = getInt()) >>> 10 & 0x3) != orgSampleFrequency || (i >>> 17 & 0x3) != orgLayer || (i >>> 19 & 0x3) != orgVersion || (AUDIO_SYNC_PATTERN != (i & AUDIO_SYNC_PATTERN)))) {
                     b[0] = b[1] = b[2] = b[3] = 0;
                     return null;
                 }
